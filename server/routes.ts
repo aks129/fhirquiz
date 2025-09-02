@@ -8,6 +8,7 @@ import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
 import { extractHealthMetrics, generateMetricsPreview, createFhirObservations, publishObservationsToFhir, generateAppConfig } from "./byod/processor";
+import { getActiveFhirBaseUrl, getCurrentFhirBaseUrl } from "./config";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware for anonymous users
@@ -41,11 +42,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // FHIR connectivity testing
   app.post("/api/fhir/ping", async (req, res) => {
     try {
-      const { baseUrl } = req.body;
+      const { baseUrl: userSelectedUrl } = req.body;
+      const activeBaseUrl = getActiveFhirBaseUrl(userSelectedUrl);
       const start = Date.now();
       
       // Test basic connectivity
-      const response = await fetch(`${baseUrl}/metadata`, {
+      const response = await fetch(`${activeBaseUrl}/metadata`, {
         method: 'GET',
         headers: {
           'Accept': 'application/fhir+json',
@@ -82,11 +84,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bundle upload and processing
   app.post("/api/fhir/load-bundle", async (req, res) => {
     try {
-      const { bundle, fhirServerUrl, fileName } = req.body;
+      const { bundle, fhirServerUrl: userSelectedUrl, fileName } = req.body;
       const sessionId = req.headers['x-session-id'] as string;
+      const activeFhirServerUrl = getActiveFhirBaseUrl(userSelectedUrl);
       
       // Post bundle to FHIR server
-      const response = await fetch(fhirServerUrl, {
+      const response = await fetch(activeFhirServerUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/fhir+json',
@@ -132,7 +135,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // FHIR resource statistics
   app.post("/api/fhir/stats", async (req, res) => {
     try {
-      const { fhirServerUrl, patientId } = req.body;
+      const { fhirServerUrl: userSelectedUrl, patientId } = req.body;
+      const fhirServerUrl = getActiveFhirBaseUrl(userSelectedUrl);
       
       const stats = {
         patients: 0,
@@ -743,6 +747,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error initializing demo data:", error);
       res.status(500).json({ error: "Failed to initialize demo data" });
+    }
+  });
+
+  // Get currently active FHIR base URL
+  app.get("/ops/fhir-base", async (req, res) => {
+    try {
+      const baseUrl = getCurrentFhirBaseUrl();
+      res.json({
+        activeBaseUrl: baseUrl,
+        useLocalFhir: process.env.USE_LOCAL_FHIR === 'true',
+        localFhirUrl: process.env.LOCAL_FHIR_URL || 'http://localhost:8080/fhir',
+        fallbackUrl: process.env.FHIR_BASE_URL || 'https://hapi.fhir.org/baseR4'
+      });
+    } catch (error) {
+      console.error("Error getting FHIR base URL:", error);
+      res.status(500).json({ error: "Failed to get FHIR base URL" });
     }
   });
 
