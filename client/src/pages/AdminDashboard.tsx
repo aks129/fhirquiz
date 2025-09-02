@@ -4,13 +4,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Shield, Users, Package, BookOpen, CreditCard, Award } from "lucide-react";
+import { Loader2, Shield, Users, Package, BookOpen, CreditCard, Award, Settings } from "lucide-react";
 
 import { UsersTab } from "@/components/admin/UsersTab";
 import { ProductsTab } from "@/components/admin/ProductsTab";
 import { CoursesTab } from "@/components/admin/CoursesTab";
 import { BillingTab } from "@/components/admin/BillingTab";
 import { BadgesTab } from "@/components/admin/BadgesTab";
+import { FeatureFlagsTab } from "@/components/admin/FeatureFlagsTab";
 
 export default function AdminDashboard() {
   const { user, profile, isLoading } = useAuth();
@@ -109,7 +110,7 @@ export default function AdminDashboard() {
         {/* Admin Tabs */}
         <Card className="w-full">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="users" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 Users
@@ -129,6 +130,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="badges" className="flex items-center gap-2">
                 <Award className="h-4 w-4" />
                 Badges
+              </TabsTrigger>
+              <TabsTrigger value="features" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Features
               </TabsTrigger>
             </TabsList>
 
@@ -150,6 +155,10 @@ export default function AdminDashboard() {
 
             <TabsContent value="badges" className="mt-6" data-testid="admin-badges-tab">
               <BadgesTab />
+            </TabsContent>
+
+            <TabsContent value="features" className="mt-6" data-testid="admin-features-tab">
+              <FeatureFlagsTab />
             </TabsContent>
           </Tabs>
         </Card>

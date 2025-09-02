@@ -16,26 +16,34 @@ import {
   LogOut
 } from "lucide-react";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
 interface SidebarProps {
   className?: string;
 }
 
-const navigation = [
-  { name: 'Dashboard', href: '/portal', icon: LayoutDashboard },
-  { name: 'Courses', href: '/bootcamp', icon: BookOpen },
-  { name: 'BYOD', href: '/byod', icon: Upload },
-  { name: 'Results Gallery', href: '/gallery', icon: Images },
-  { name: 'Rewards', href: '/rewards', icon: Award },
-  { name: 'Billing', href: '/billing', icon: CreditCard },
-  { name: 'Profile', href: '/profile', icon: User },
-  { name: 'Help', href: '/help', icon: HelpCircle },
-];
+const allNavigationItems = [
+  { name: 'Dashboard', href: '/portal', icon: LayoutDashboard, requiresFlag: null },
+  { name: 'Courses', href: '/bootcamp', icon: BookOpen, requiresFlag: null },
+  { name: 'BYOD', href: '/byod', icon: Upload, requiresFlag: 'enableBYOD' },
+  { name: 'Results Gallery', href: '/gallery', icon: Images, requiresFlag: null },
+  { name: 'Rewards', href: '/rewards', icon: Award, requiresFlag: 'enableCertificates' },
+  { name: 'Billing', href: '/billing', icon: CreditCard, requiresFlag: null },
+  { name: 'Profile', href: '/profile', icon: User, requiresFlag: null },
+  { name: 'Help', href: '/help', icon: HelpCircle, requiresFlag: null },
+] as const;
 
 export function Sidebar({ className }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [location] = useLocation();
   const { clear, user, profile } = useSessionStore();
+  const { flags } = useFeatureFlags();
+
+  // Filter navigation items based on feature flags
+  const navigation = allNavigationItems.filter(item => {
+    if (!item.requiresFlag) return true;
+    return flags[item.requiresFlag];
+  });
 
   const handleSignOut = () => {
     clear();

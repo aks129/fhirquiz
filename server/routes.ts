@@ -39,6 +39,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register billing routes
   registerBillingRoutes(app);
 
+  // Feature Flag endpoints
+  app.get("/config/features", async (req, res) => {
+    try {
+      const flags = await storage.getFeatureFlags();
+      const flagsMap = flags.reduce((acc, flag) => {
+        acc[flag.flagKey] = flag.isEnabled;
+        return acc;
+      }, {} as Record<string, boolean>);
+      res.json(flagsMap);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch feature flags" });
+    }
+  });
+
+  app.get("/api/admin/feature-flags", async (req, res) => {
+    try {
+      const flags = await storage.getFeatureFlags();
+      res.json(flags);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch feature flags" });
+    }
+  });
+
+  app.put("/api/admin/feature-flags/:flagKey", async (req, res) => {
+    try {
+      const { flagKey } = req.params;
+      const { isEnabled } = req.body;
+      const updatedBy = req.user?.id || undefined;
+      
+      const updatedFlag = await storage.updateFeatureFlag(flagKey, isEnabled, updatedBy);
+      res.json(updatedFlag);
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  });
+
   // FHIR Server endpoints
   app.get("/api/fhir/servers", async (req, res) => {
     try {

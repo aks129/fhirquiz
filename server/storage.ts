@@ -4,7 +4,7 @@ import { type User, type InsertUser, type FhirServer, type InsertFhirServer,
          type Question, type InsertQuestion, type Choice, type InsertChoice,
          type QuizAttempt, type InsertQuizAttempt, type QuizAnswer, type InsertQuizAnswer,
          type ByodSession, type InsertByodSession, type ByodObservation, type InsertByodObservation,
-         type GeneratedApp, type InsertGeneratedApp } from "@shared/schema";
+         type GeneratedApp, type InsertGeneratedApp, type FeatureFlag, type InsertFeatureFlag } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -66,6 +66,11 @@ export interface IStorage {
   getGeneratedApps(sessionId: string): Promise<GeneratedApp[]>;
   createGeneratedApp(app: InsertGeneratedApp): Promise<GeneratedApp>;
   updateGeneratedApp(id: string, updates: Partial<GeneratedApp>): Promise<GeneratedApp>;
+  
+  // Feature Flag operations
+  getFeatureFlags(): Promise<FeatureFlag[]>;
+  getFeatureFlag(flagKey: string): Promise<FeatureFlag | undefined>;
+  updateFeatureFlag(flagKey: string, isEnabled: boolean, updatedBy?: string): Promise<FeatureFlag>;
 }
 
 export class MemStorage implements IStorage {
@@ -82,6 +87,7 @@ export class MemStorage implements IStorage {
   private byodSessions: Map<string, ByodSession>;
   private byodObservations: Map<string, ByodObservation>;
   private generatedApps: Map<string, GeneratedApp>;
+  private featureFlags: Map<string, FeatureFlag>;
 
   constructor() {
     this.users = new Map();
@@ -97,9 +103,11 @@ export class MemStorage implements IStorage {
     this.byodSessions = new Map();
     this.byodObservations = new Map();
     this.generatedApps = new Map();
+    this.featureFlags = new Map();
     
-    // Seed with default FHIR servers and quizzes
+    // Seed with default FHIR servers, quizzes, and feature flags
     this.seedFhirServers();
+    this.seedFeatureFlags();
     // Seed quizzes asynchronously (don't await in constructor)
     this.seedQuizzes().catch(console.error);
   }
@@ -599,6 +607,76 @@ export class MemStorage implements IStorage {
     const updatedApp = { ...app, ...updates, lastAccessed: new Date() };
     this.generatedApps.set(id, updatedApp);
     return updatedApp;
+  }
+
+  private seedFeatureFlags() {
+    const defaultFlags: FeatureFlag[] = [
+      {
+        id: randomUUID(),
+        flagKey: "enableDemo",
+        flagName: "Demo Mode",
+        description: "Enable demo mode with simulated lab experiences",
+        isEnabled: true,
+        updatedAt: new Date(),
+        updatedBy: null,
+      },
+      {
+        id: randomUUID(),
+        flagKey: "enableBYOD",
+        flagName: "Bring Your Own Data",
+        description: "Enable BYOD functionality for personal health data",
+        isEnabled: true,
+        updatedAt: new Date(),
+        updatedBy: null,
+      },
+      {
+        id: randomUUID(),
+        flagKey: "enableDeepDive",
+        flagName: "Deep Dive Sessions",
+        description: "Enable advanced deep dive learning modules",
+        isEnabled: false,
+        updatedAt: new Date(),
+        updatedBy: null,
+      },
+      {
+        id: randomUUID(),
+        flagKey: "enableCertificates",
+        flagName: "Certificate Generation",
+        description: "Enable certificate generation upon course completion",
+        isEnabled: false,
+        updatedAt: new Date(),
+        updatedBy: null,
+      },
+    ];
+
+    defaultFlags.forEach(flag => {
+      this.featureFlags.set(flag.flagKey, flag);
+    });
+  }
+
+  async getFeatureFlags(): Promise<FeatureFlag[]> {
+    return Array.from(this.featureFlags.values());
+  }
+
+  async getFeatureFlag(flagKey: string): Promise<FeatureFlag | undefined> {
+    return this.featureFlags.get(flagKey);
+  }
+
+  async updateFeatureFlag(flagKey: string, isEnabled: boolean, updatedBy?: string): Promise<FeatureFlag> {
+    const existingFlag = this.featureFlags.get(flagKey);
+    if (!existingFlag) {
+      throw new Error(`Feature flag with key ${flagKey} not found`);
+    }
+    
+    const updatedFlag = {
+      ...existingFlag,
+      isEnabled,
+      updatedAt: new Date(),
+      updatedBy: updatedBy || null,
+    };
+    
+    this.featureFlags.set(flagKey, updatedFlag);
+    return updatedFlag;
   }
 }
 

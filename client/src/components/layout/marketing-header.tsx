@@ -3,19 +3,27 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { Menu, Shield } from "lucide-react";
 
 export default function MarketingHeader() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const { flags } = useFeatureFlags();
 
-  const navItems = [
-    { label: "Curriculum", path: "/curriculum" },
-    { label: "Pricing", path: "/pricing" },
-    { label: "Demo", path: "/demo" },
-    { label: "Docs", path: "/docs" }
+  const allNavItems = [
+    { label: "Curriculum", path: "/curriculum", requiresFlag: null },
+    { label: "Pricing", path: "/pricing", requiresFlag: null },
+    { label: "Demo", path: "/demo", requiresFlag: "enableDemo" },
+    { label: "Docs", path: "/docs", requiresFlag: null }
   ];
+
+  // Filter navigation items based on feature flags
+  const navItems = allNavItems.filter(item => {
+    if (!item.requiresFlag) return true;
+    return flags[item.requiresFlag];
+  });
 
   const handlePortalClick = () => {
     if (user) {

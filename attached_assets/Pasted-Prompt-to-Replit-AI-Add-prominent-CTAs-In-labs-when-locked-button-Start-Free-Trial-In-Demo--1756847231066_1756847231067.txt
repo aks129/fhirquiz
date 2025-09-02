@@ -1,0 +1,93 @@
+Prompt to Replit AI:
+
+Add prominent CTAs:
+
+In labs when locked: button “Start Free Trial.”
+
+In Demo Site: “Create Free Account” or “Continue in Demo Mode.”
+
+On every course page: sticky footer with enroll/upgrade CTA.
+
+Ensure CTAs are disabled appropriately in Demo Mode and display tooltips explaining the mode.
+
+13) Seeders for demo data
+
+Prompt to Replit AI:
+
+Extend apps/backend/db/seed.py to:
+
+Create a demo instructor and demo students (fake accounts) with sample progress, badges, certificates (files can be placeholders).
+
+Create demo purchases and trials.
+
+Insert 3 testimonials with names/roles.
+
+Add /ops/seed-demo endpoint to run this and a caution message in logs.
+
+14) Content polish & copy system
+
+Prompt to Replit AI:
+
+Add a small content/ directory with Markdown files:
+
+landing/hero.md, landing/faq.md, landing/testimonials.md.
+
+courses/fhir-101.md, courses/bootcamp.md, courses/deep-dive.md.
+
+Build a Markdown loader so marketing can tweak copy without redeploying code (hot reload in dev).
+
+15) Mobile & a11y checks
+
+Prompt to Replit AI:
+
+Ensure landing, pricing, and portal dashboards are fully responsive.
+
+Run axe-core on Landing, Pricing, Portal; fix critical/serious issues.
+
+Add keyboard-only nav for navbar, menus, and modals.
+
+16) Impersonation (admin tool) + Support snapshots
+
+Prompt to Replit AI:
+
+Admin-only:
+
+Impersonate user: switch context to any user (visual red frame + “Impersonating” banner).
+
+Support snapshot: one-click zip of a user’s artifacts (progress JSON, quiz attempts, publish logs) for debugging.
+
+17) “Demo Reset” & class reset
+
+Prompt to Replit AI:
+
+Add /ops/reset-demo to clear demo user state and reload seeds.
+
+Add /ops/reset-class (Instructor Mode) as previously described; confirm twice before destructive actions.
+
+18) Trust & conversion nudges
+
+Prompt to Replit AI:
+
+Add subtle conversion helpers:
+
+“As seen in” logos section (placeholders).
+
+Counter of “Learners enrolled” (from DB).
+
+Exit-intent modal on landing with “Try the live demo” CTA.
+
+Post-trial banner in portal with “Upgrade to keep access.”
+
+19) Analytics dashboard for instructors
+
+Prompt to Replit AI:
+
+In /instructor add Analytics:
+
+Course funnel: Enrolled → Day1 quiz pass → Day2 → Day3 → Certificate.
+
+BYOD completion rates.
+
+Average quiz scores per day.
+
+Export CSV.
