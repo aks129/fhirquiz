@@ -68,6 +68,25 @@ export default function ServerSelector({ onServerChange }: ServerSelectorProps) 
           title: "Connection Successful",
           description: `Connected to FHIR server (${result.fhirVersion}) in ${result.responseTime}ms`,
         });
+        
+        // Mark server setup as complete and ensure the selected server is passed to parent
+        fetch("/api/lab/progress", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Session-ID": localStorage.getItem('fhir-bootcamp-session') || '',
+          },
+          body: JSON.stringify({
+            labDay: 1,
+            stepName: "server_setup",
+            completed: true,
+          }),
+        });
+        
+        // Ensure the selected server is passed to parent after successful test
+        if (selectedServer && onServerChange) {
+          onServerChange(selectedServer);
+        }
       } else {
         toast({
           title: "Connection Failed",
