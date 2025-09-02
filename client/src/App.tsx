@@ -11,6 +11,10 @@ import Day3Lab from "@/pages/day3-lab";
 import Resources from "@/pages/resources";
 import ResultsGallery from "@/pages/results-gallery";
 import Troubleshooting from "@/pages/troubleshooting";
+import { QuizDay1 } from "@/pages/quiz-day1";
+import { QuizDay2 } from "@/pages/quiz-day2";
+import { QuizDay3 } from "@/pages/quiz-day3";
+import { QuizFhir } from "@/pages/quiz-fhir";
 import NavigationHeader from "@/components/layout/navigation-header";
 import SidebarNavigation from "@/components/layout/sidebar-navigation";
 
@@ -27,6 +31,10 @@ function Router() {
             <Route path="/lab/day1" component={Day1Lab} />
             <Route path="/lab/day2" component={Day2Lab} />
             <Route path="/lab/day3" component={Day3Lab} />
+            <Route path="/quiz/day1" component={QuizDay1} />
+            <Route path="/quiz/day2" component={QuizDay2} />
+            <Route path="/quiz/day3" component={QuizDay3} />
+            <Route path="/quiz/fhir" component={QuizFhir} />
             <Route path="/resources" component={Resources} />
             <Route path="/gallery" component={ResultsGallery} />
             <Route path="/troubleshooting" component={Troubleshooting} />

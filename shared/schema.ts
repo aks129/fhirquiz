@@ -224,3 +224,191 @@ export interface TransformResult {
     readmissionFlag: boolean;
   }>;
 }
+
+// Quiz System Tables
+export const quizzes = pgTable("quizzes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  description: text("description"),
+  timeLimit: integer("time_limit"), // in minutes
+  passingScore: integer("passing_score").default(80), // percentage
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const questions = pgTable("questions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quizId: varchar("quiz_id").references(() => quizzes.id),
+  questionText: text("question_text").notNull(),
+  explanation: text("explanation"),
+  tags: jsonb("tags"), // array of strings
+  order: integer("order").default(0),
+});
+
+export const choices = pgTable("choices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  questionId: varchar("question_id").references(() => questions.id),
+  choiceText: text("choice_text").notNull(),
+  isCorrect: boolean("is_correct").default(false),
+  order: integer("order").default(0),
+});
+
+export const quizAttempts = pgTable("quiz_attempts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: text("session_id"), // For anonymous users
+  quizId: varchar("quiz_id").references(() => quizzes.id),
+  score: integer("score"), // percentage
+  passed: boolean("passed").default(false),
+  duration: integer("duration"), // in seconds
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const quizAnswers = pgTable("quiz_answers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  attemptId: varchar("attempt_id").references(() => quizAttempts.id),
+  questionId: varchar("question_id").references(() => questions.id),
+  choiceId: varchar("choice_id").references(() => choices.id),
+  isCorrect: boolean("is_correct").default(false),
+});
+
+// BYOD System Tables
+export const byodSessions = pgTable("byod_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: text("session_id"),
+  sourceType: text("source_type").notNull(), // apple-health, google-fit, fitbit, garmin
+  fileName: text("file_name"),
+  fileSize: integer("file_size"),
+  rawData: jsonb("raw_data"), // parsed data before mapping
+  mappings: jsonb("mappings"), // FHIR mappings configured
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const byodObservations = pgTable("byod_observations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").references(() => byodSessions.id),
+  fhirId: text("fhir_id"), // ID from FHIR server after POST
+  observationType: text("observation_type").notNull(),
+  value: text("value"),
+  unit: text("unit"),
+  effectiveDate: timestamp("effective_date"),
+  fhirServerId: varchar("fhir_server_id").references(() => fhirServers.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Insert schemas for quiz system
+export const insertQuizSchema = createInsertSchema(quizzes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertQuestionSchema = createInsertSchema(questions).omit({
+  id: true,
+});
+
+export const insertChoiceSchema = createInsertSchema(choices).omit({
+  id: true,
+});
+
+export const insertQuizAttemptSchema = createInsertSchema(quizAttempts).omit({
+  id: true,
+  startedAt: true,
+  completedAt: true,
+});
+
+export const insertQuizAnswerSchema = createInsertSchema(quizAnswers).omit({
+  id: true,
+});
+
+export const insertByodSessionSchema = createInsertSchema(byodSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertByodObservationSchema = createInsertSchema(byodObservations).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Quiz system types
+export type Quiz = typeof quizzes.$inferSelect;
+export type InsertQuiz = z.infer<typeof insertQuizSchema>;
+
+export type Question = typeof questions.$inferSelect;
+export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
+
+export type Choice = typeof choices.$inferSelect;
+export type InsertChoice = z.infer<typeof insertChoiceSchema>;
+
+export type QuizAttempt = typeof quizAttempts.$inferSelect;
+export type InsertQuizAttempt = z.infer<typeof insertQuizAttemptSchema>;
+
+export type QuizAnswer = typeof quizAnswers.$inferSelect;
+export type InsertQuizAnswer = z.infer<typeof insertQuizAnswerSchema>;
+
+export type ByodSession = typeof byodSessions.$inferSelect;
+export type InsertByodSession = z.infer<typeof insertByodSessionSchema>;
+
+export type ByodObservation = typeof byodObservations.$inferSelect;
+export type InsertByodObservation = z.infer<typeof insertByodObservationSchema>;
+
+// Quiz API types
+export interface QuizData {
+  quiz: Quiz;
+  questions: Array<Question & { choices: Choice[] }>;
+}
+
+export interface QuizSubmission {
+  answers: Array<{
+    questionId: string;
+    choiceId: string;
+  }>;
+  duration: number;
+}
+
+export interface QuizResult {
+  score: number;
+  passed: boolean;
+  totalQuestions: number;
+  correctAnswers: number;
+  feedback: Array<{
+    questionId: string;
+    questionText: string;
+    selectedChoice: string;
+    correctChoice: string;
+    isCorrect: boolean;
+    explanation: string;
+  }>;
+}
+
+// BYOD API types
+export interface ByodImportResult {
+  success: boolean;
+  recordCount: number;
+  metrics: string[];
+  preview: Array<{
+    metric: string;
+    sampleValues: any[];
+    count: number;
+    unit?: string;
+  }>;
+}
+
+export interface ByodMapping {
+  metric: string;
+  codeSystem: string;
+  code: string;
+  display: string;
+  unit: string;
+  category?: string;
+}
+
+export interface ByodPublishRequest {
+  patientId: string;
+  encounterId?: string;
+  mappings: ByodMapping[];
+  fhirServerId: string;
+}

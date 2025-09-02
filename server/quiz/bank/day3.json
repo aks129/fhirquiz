@@ -1,0 +1,155 @@
+{
+  "quiz": {
+    "slug": "day3",
+    "title": "Day 3: FHIR Data Operationalization",
+    "description": "Test your understanding of publishing insights back to FHIR servers",
+    "timeLimit": 20,
+    "passingScore": 80
+  },
+  "questions": [
+    {
+      "id": "q1-observation-status",
+      "stem": "When creating an Observation resource for a calculated risk score, what status should you use?",
+      "choices": [
+        { "id": "a", "label": "registered", "is_correct": false },
+        { "id": "b", "label": "preliminary", "is_correct": false },
+        { "id": "c", "label": "final", "is_correct": true },
+        { "id": "d", "label": "cancelled", "is_correct": false }
+      ],
+      "explanation": "Risk scores are calculated results that are complete and ready for clinical use, so they should have status 'final'. 'Preliminary' would suggest the calculation is not yet complete.",
+      "tags": ["observation", "status", "risk-scores", "fhir-resources"]
+    },
+    {
+      "id": "q2-observation-category",
+      "stem": "What category should be used for risk assessment Observations?",
+      "choices": [
+        { "id": "a", "label": "vital-signs", "is_correct": false },
+        { "id": "b", "label": "laboratory", "is_correct": false },
+        { "id": "c", "label": "survey", "is_correct": true },
+        { "id": "d", "label": "imaging", "is_correct": false }
+      ],
+      "explanation": "Risk assessments are typically categorized as 'survey' since they represent calculated or derived assessments rather than direct vital signs or lab measurements.",
+      "tags": ["observation", "category", "risk-assessment", "terminology"]
+    },
+    {
+      "id": "q3-capability-statement",
+      "stem": "Before creating Observations on a FHIR server, what should you check in the CapabilityStatement?",
+      "choices": [
+        { "id": "a", "label": "Server uptime", "is_correct": false },
+        { "id": "b", "label": "Whether the server supports CREATE operations on Observation resources", "is_correct": true },
+        { "id": "c", "label": "The server's geographic location", "is_correct": false },
+        { "id": "d", "label": "How many users are online", "is_correct": false }
+      ],
+      "explanation": "CapabilityStatement tells you which operations (CREATE, READ, UPDATE, DELETE) are supported for each resource type. Always verify CREATE is supported before attempting to POST.",
+      "tags": ["capability-statement", "operations", "server-capabilities", "validation"]
+    },
+    {
+      "id": "q4-fhir-versions-compatibility",
+      "stem": "What's a major risk when working with FHIR servers of different versions?",
+      "choices": [
+        { "id": "a", "label": "Different servers have different uptime", "is_correct": false },
+        { "id": "b", "label": "Resource structures and required fields may differ between R4 and R5", "is_correct": true },
+        { "id": "c", "label": "Servers run on different operating systems", "is_correct": false },
+        { "id": "d", "label": "Network latency varies", "is_correct": false }
+      ],
+      "explanation": "FHIR versions (R4, R5) have different resource structures, required fields, and validation rules. Code written for R4 may fail on R5 servers due to schema differences.",
+      "tags": ["fhir-versions", "compatibility", "r4", "r5", "versioning"]
+    },
+    {
+      "id": "q5-transaction-bundle-advantage",
+      "stem": "When creating multiple related Observations, why use a transaction Bundle instead of individual POSTs?",
+      "choices": [
+        { "id": "a", "label": "Bundles are faster to upload", "is_correct": false },
+        { "id": "b", "label": "All resources succeed or all fail together (atomicity)", "is_correct": true },
+        { "id": "c", "label": "Bundles use less bandwidth", "is_correct": false },
+        { "id": "d", "label": "Individual POSTs are not allowed", "is_correct": false }
+      ],
+      "explanation": "Transaction bundles ensure atomicity - either all resources are created successfully, or none are. This prevents partial failures that could leave your data in an inconsistent state.",
+      "tags": ["transaction-bundle", "atomicity", "data-consistency", "error-handling"]
+    },
+    {
+      "id": "q6-observation-subject",
+      "stem": "In an Observation for patient risk score, what should the subject reference point to?",
+      "choices": [
+        { "id": "a", "label": "The encounter where risk was calculated", "is_correct": false },
+        { "id": "b", "label": "The specific Patient resource", "is_correct": true },
+        { "id": "c", "label": "The organization running the assessment", "is_correct": false },
+        { "id": "d", "label": "The practitioner who ordered it", "is_correct": false }
+      ],
+      "explanation": "The subject field identifies what the observation is about. For patient risk scores, this should always reference the Patient resource the risk applies to.",
+      "tags": ["observation", "subject", "references", "patient"]
+    },
+    {
+      "id": "q7-effective-datetime",
+      "stem": "For a risk score calculated today based on historical data, what should effectiveDateTime represent?",
+      "choices": [
+        { "id": "a", "label": "When the historical data was originally collected", "is_correct": false },
+        { "id": "b", "label": "When the risk score was calculated (today)", "is_correct": true },
+        { "id": "c", "label": "When the patient was born", "is_correct": false },
+        { "id": "d", "label": "When the risk period ends", "is_correct": false }
+      ],
+      "explanation": "effectiveDateTime should represent when the observation was made or calculated, not when the underlying data was collected. This is when the risk assessment was performed.",
+      "tags": ["effective-datetime", "timestamps", "observation", "timing"]
+    },
+    {
+      "id": "q8-valueQuantity-structure",
+      "stem": "For a risk score of 0.75 (75% risk), how should you structure the valueQuantity?",
+      "choices": [
+        { "id": "a", "label": "value: 75, unit: '%'", "is_correct": false },
+        { "id": "b", "label": "value: 0.75, unit: '1' (unitless ratio)", "is_correct": true },
+        { "id": "c", "label": "value: '75%', unit: 'percent'", "is_correct": false },
+        { "id": "d", "label": "valueString: '75% risk'", "is_correct": false }
+      ],
+      "explanation": "Risk scores are typically expressed as decimal probabilities (0.0-1.0) with unit '1' indicating a unitless ratio. This follows clinical standards for probability values.",
+      "tags": ["valueQuantity", "units", "probabilities", "risk-scores"]
+    },
+    {
+      "id": "q9-error-handling",
+      "stem": "If creating an Observation fails with a 400 error, what's the most likely cause?",
+      "choices": [
+        { "id": "a", "label": "Server is down", "is_correct": false },
+        { "id": "b", "label": "Invalid resource structure or missing required fields", "is_correct": true },
+        { "id": "c", "label": "Network connectivity issues", "is_correct": false },
+        { "id": "d", "label": "Server is too busy", "is_correct": false }
+      ],
+      "explanation": "HTTP 400 (Bad Request) indicates client-side errors like invalid JSON structure, missing required fields, or violating resource constraints. Check your Observation structure against FHIR specs.",
+      "tags": ["error-handling", "http-codes", "validation", "debugging"]
+    },
+    {
+      "id": "q10-sequential-vs-batch",
+      "stem": "When would you use sequential individual POSTs instead of a transaction Bundle?",
+      "choices": [
+        { "id": "a", "label": "When you want better error isolation and can handle partial failures", "is_correct": true },
+        { "id": "b", "label": "When you have fewer than 5 resources", "is_correct": false },
+        { "id": "c", "label": "When the server doesn't support bundles", "is_correct": false },
+        { "id": "d", "label": "When resources are unrelated", "is_correct": false }
+      ],
+      "explanation": "Sequential POSTs allow you to continue processing even if some resources fail, and provide better error isolation for debugging. Use when partial success is acceptable.",
+      "tags": ["sequential-posts", "error-handling", "batch-processing", "resilience"]
+    },
+    {
+      "id": "q11-phi-public-servers",
+      "stem": "Why should you never upload real patient data to public FHIR test servers?",
+      "choices": [
+        { "id": "a", "label": "Public servers are slower", "is_correct": false },
+        { "id": "b", "label": "It violates HIPAA and patient privacy laws", "is_correct": true },
+        { "id": "c", "label": "Public servers don't accept real data", "is_correct": false },
+        { "id": "d", "label": "Real data makes testing harder", "is_correct": false }
+      ],
+      "explanation": "Public test servers can be accessed by anyone and don't have proper security controls for PHI. Uploading real patient data violates HIPAA, GDPR, and other privacy regulations.",
+      "tags": ["privacy", "phi", "hipaa", "public-servers", "compliance"]
+    },
+    {
+      "id": "q12-observation-codes",
+      "stem": "When creating a custom risk score Observation, which coding approach is most appropriate for learning?",
+      "choices": [
+        { "id": "a", "label": "Use only LOINC codes", "is_correct": false },
+        { "id": "b", "label": "Use a local demo code system with clear descriptions", "is_correct": true },
+        { "id": "c", "label": "Don't include any coding", "is_correct": false },
+        { "id": "d", "label": "Use random numeric codes", "is_correct": false }
+      ],
+      "explanation": "For learning purposes, use a demo code system (like 'http://example.org/fhir/demo-codes') with descriptive codes. This avoids misusing official terminologies while maintaining proper FHIR structure.",
+      "tags": ["coding", "terminology", "demo-codes", "best-practices"]
+    }
+  ]
+}

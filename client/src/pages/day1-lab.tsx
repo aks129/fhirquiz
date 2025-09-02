@@ -218,11 +218,26 @@ export default function Day1Lab() {
         <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
           <CardContent className="p-6 text-center">
             <h3 className="text-lg font-semibold text-green-800 mb-2">🎉 Day 1 Complete!</h3>
-            <p className="text-sm text-green-700 mb-4">You've successfully loaded FHIR data and exported it for analysis. Ready for Day 2?</p>
-            <Button className="bg-amber-500 hover:bg-amber-600" data-testid="button-proceed-day2">
-              <i className="fas fa-arrow-right mr-2"></i>
-              Proceed to Day 2: Transform & Analyze
-            </Button>
+            <p className="text-sm text-green-700 mb-4">You've successfully loaded FHIR data and exported it for analysis.</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button 
+                onClick={() => window.location.href = "/quiz/day1"}
+                className="bg-blue-600 hover:bg-blue-700" 
+                data-testid="button-take-day1-quiz"
+              >
+                <i className="fas fa-graduation-cap mr-2"></i>
+                Take Day 1 Quiz
+              </Button>
+              <Button 
+                onClick={() => window.location.href = "/lab/day2"}
+                className="bg-amber-500 hover:bg-amber-600" 
+                data-testid="button-proceed-day2"
+              >
+                <i className="fas fa-arrow-right mr-2"></i>
+                Proceed to Day 2
+              </Button>
+            </div>
+            <p className="text-xs text-green-600 mt-3">Complete the Day 1 quiz to unlock Day 2!</p>
           </CardContent>
         </Card>
       )}

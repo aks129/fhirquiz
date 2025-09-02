@@ -1,0 +1,131 @@
+{
+  "quiz": {
+    "slug": "day2",
+    "title": "Day 2: FHIR Data Transformation & Analytics",
+    "description": "Test your understanding of FHIR data transformation and risk scoring",
+    "timeLimit": 20,
+    "passingScore": 80
+  },
+  "questions": [
+    {
+      "id": "q1-staging-purpose",
+      "stem": "Why do we create staging tables when transforming FHIR data for analytics?",
+      "choices": [
+        { "id": "a", "label": "To make queries faster", "is_correct": false },
+        { "id": "b", "label": "To flatten hierarchical FHIR data into relational format", "is_correct": true },
+        { "id": "c", "label": "To backup the original data", "is_correct": false },
+        { "id": "d", "label": "To compress the data", "is_correct": false }
+      ],
+      "explanation": "Staging tables flatten complex, nested FHIR JSON into relational rows and columns, making it easier to write SQL queries for analytics and join across resource types.",
+      "tags": ["staging", "transformation", "sql", "analytics"]
+    },
+    {
+      "id": "q2-patient-encounter-join",
+      "stem": "When joining Patient and Encounter tables, what's the correct SQL approach?",
+      "choices": [
+        { "id": "a", "label": "JOIN ON Patient.id = Encounter.id", "is_correct": false },
+        { "id": "b", "label": "JOIN ON Patient.id = Encounter.subject_reference", "is_correct": true },
+        { "id": "c", "label": "JOIN ON Patient.name = Encounter.patient_name", "is_correct": false },
+        { "id": "d", "label": "No join needed, use separate queries", "is_correct": false }
+      ],
+      "explanation": "FHIR references work by linking the referenced resource's ID to the referencing resource's reference field. Encounters reference patients via subject_reference.",
+      "tags": ["sql", "joins", "references", "patient-encounter"]
+    },
+    {
+      "id": "q3-readmission-logic",
+      "stem": "For calculating 30-day readmission risk, which SQL condition correctly identifies a readmission?",
+      "choices": [
+        { "id": "a", "label": "COUNT(encounters) > 1", "is_correct": false },
+        { "id": "b", "label": "encounter_date - previous_discharge_date <= 30", "is_correct": true },
+        { "id": "c", "label": "encounter_type = 'readmission'", "is_correct": false },
+        { "id": "d", "label": "patient_age > 65", "is_correct": false }
+      ],
+      "explanation": "A readmission occurs when a patient has a new encounter within 30 days of being discharged from a previous encounter. The date logic is key.",
+      "tags": ["readmission", "sql", "date-logic", "risk-scoring"]
+    },
+    {
+      "id": "q4-risk-score-model",
+      "stem": "In our simple risk scoring model, which factors increase readmission risk?",
+      "choices": [
+        { "id": "a", "label": "Only age over 65", "is_correct": false },
+        { "id": "b", "label": "Age over 65 AND multiple chronic conditions", "is_correct": true },
+        { "id": "c", "label": "Only number of previous encounters", "is_correct": false },
+        { "id": "d", "label": "Patient gender", "is_correct": false }
+      ],
+      "explanation": "Our model combines age (>65) and comorbidity burden (multiple conditions) as key risk factors, as these are well-established predictors of readmission in healthcare literature.",
+      "tags": ["risk-scoring", "predictive-modeling", "comorbidities", "age-factor"]
+    },
+    {
+      "id": "q5-codeable-concept",
+      "stem": "When analyzing diagnosis codes in FHIR, why is CodeableConcept structure important?",
+      "choices": [
+        { "id": "a", "label": "It makes the data smaller", "is_correct": false },
+        { "id": "b", "label": "It allows multiple coding systems (ICD-10, SNOMED) for the same concept", "is_correct": true },
+        { "id": "c", "label": "It encrypts sensitive diagnosis information", "is_correct": false },
+        { "id": "d", "label": "It makes queries faster", "is_correct": false }
+      ],
+      "explanation": "CodeableConcept allows the same medical concept to be coded in multiple terminologies (ICD-10, SNOMED CT, local codes), enabling interoperability between different systems.",
+      "tags": ["codeableconcept", "terminology", "interoperability", "coding-systems"]
+    },
+    {
+      "id": "q6-aggregation-sql",
+      "stem": "To calculate the average number of encounters per patient, which SQL is correct?",
+      "choices": [
+        { "id": "a", "label": "SELECT AVG(encounter_count) FROM encounters", "is_correct": false },
+        { "id": "b", "label": "SELECT COUNT(*) / COUNT(DISTINCT patient_id) FROM encounters", "is_correct": true },
+        { "id": "c", "label": "SELECT SUM(encounters) / patients FROM summary_table", "is_correct": false },
+        { "id": "d", "label": "SELECT AVG(*) FROM encounters GROUP BY patient_id", "is_correct": false }
+      ],
+      "explanation": "To get average encounters per patient: divide total encounters COUNT(*) by unique patients COUNT(DISTINCT patient_id). This handles patients with varying encounter counts correctly.",
+      "tags": ["sql", "aggregation", "averages", "distinct-count"]
+    },
+    {
+      "id": "q7-chronic-conditions",
+      "stem": "When identifying patients with chronic conditions for risk scoring, what's a key challenge?",
+      "choices": [
+        { "id": "a", "label": "Chronic conditions are rare", "is_correct": false },
+        { "id": "b", "label": "Different systems use different diagnosis code sets", "is_correct": true },
+        { "id": "c", "label": "Chronic conditions don't affect readmission risk", "is_correct": false },
+        { "id": "d", "label": "FHIR doesn't support diagnosis codes", "is_correct": false }
+      ],
+      "explanation": "Different healthcare systems use different coding systems (ICD-9, ICD-10, SNOMED). A condition might be coded as '250.0' in ICD-9 but 'E11.9' in ICD-10, requiring mapping logic.",
+      "tags": ["chronic-conditions", "coding-systems", "terminology-mapping", "interoperability"]
+    },
+    {
+      "id": "q8-data-validation",
+      "stem": "After transforming FHIR data to staging tables, what should you always validate?",
+      "choices": [
+        { "id": "a", "label": "Table names are correct", "is_correct": false },
+        { "id": "b", "label": "Row counts match source data and references are intact", "is_correct": true },
+        { "id": "c", "label": "Data is sorted alphabetically", "is_correct": false },
+        { "id": "d", "label": "All columns have the same data type", "is_correct": false }
+      ],
+      "explanation": "Always verify that no data was lost during transformation (row counts) and that relationships between resources are preserved (references work correctly).",
+      "tags": ["data-validation", "quality-assurance", "transformation-verification"]
+    },
+    {
+      "id": "q9-window-functions",
+      "stem": "To rank patients by their risk score within each age group, which SQL feature would you use?",
+      "choices": [
+        { "id": "a", "label": "GROUP BY", "is_correct": false },
+        { "id": "b", "label": "RANK() OVER (PARTITION BY age_group ORDER BY risk_score)", "is_correct": true },
+        { "id": "c", "label": "ORDER BY risk_score", "is_correct": false },
+        { "id": "d", "label": "HAVING risk_score > avg", "is_correct": false }
+      ],
+      "explanation": "Window functions like RANK() with PARTITION BY allow you to calculate rankings within groups (age groups) while maintaining all individual rows.",
+      "tags": ["sql", "window-functions", "ranking", "partitioning"]
+    },
+    {
+      "id": "q10-performance",
+      "stem": "When working with large FHIR datasets, what's the most important performance consideration?",
+      "choices": [
+        { "id": "a", "label": "Use the fastest computer", "is_correct": false },
+        { "id": "b", "label": "Index key columns used in JOINs and WHERE clauses", "is_correct": true },
+        { "id": "c", "label": "Always use SELECT *", "is_correct": false },
+        { "id": "d", "label": "Store everything in memory", "is_correct": false }
+      ],
+      "explanation": "Database indexes on frequently queried columns (like patient IDs, dates, reference fields) dramatically improve query performance, especially with large datasets.",
+      "tags": ["performance", "indexing", "database-optimization", "scalability"]
+    }
+  ]
+}

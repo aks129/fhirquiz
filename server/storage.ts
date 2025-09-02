@@ -1,6 +1,9 @@
 import { type User, type InsertUser, type FhirServer, type InsertFhirServer, 
          type LabProgress, type InsertLabProgress, type Bundle, type InsertBundle,
-         type Artifact, type InsertArtifact } from "@shared/schema";
+         type Artifact, type InsertArtifact, type Quiz, type InsertQuiz,
+         type Question, type InsertQuestion, type Choice, type InsertChoice,
+         type QuizAttempt, type InsertQuizAttempt, type QuizAnswer, type InsertQuizAnswer,
+         type ByodSession, type InsertByodSession, type ByodObservation, type InsertByodObservation } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -28,6 +31,35 @@ export interface IStorage {
   getArtifacts(sessionId: string): Promise<Artifact[]>;
   getArtifactsByDay(sessionId: string, labDay: number): Promise<Artifact[]>;
   createArtifact(artifact: InsertArtifact): Promise<Artifact>;
+  
+  // Quiz operations
+  getQuizzes(): Promise<Quiz[]>;
+  getQuizBySlug(slug: string): Promise<Quiz | undefined>;
+  createQuiz(quiz: InsertQuiz): Promise<Quiz>;
+  
+  // Question operations
+  getQuestionsByQuizId(quizId: string): Promise<Question[]>;
+  createQuestion(question: InsertQuestion): Promise<Question>;
+  
+  // Choice operations
+  getChoicesByQuestionId(questionId: string): Promise<Choice[]>;
+  createChoice(choice: InsertChoice): Promise<Choice>;
+  
+  // Quiz attempt operations
+  getQuizAttempts(sessionId: string): Promise<QuizAttempt[]>;
+  getQuizAttemptsByQuizId(sessionId: string, quizId: string): Promise<QuizAttempt[]>;
+  createQuizAttempt(attempt: InsertQuizAttempt): Promise<QuizAttempt>;
+  updateQuizAttempt(id: string, updates: Partial<QuizAttempt>): Promise<QuizAttempt>;
+  
+  // Quiz answer operations
+  getQuizAnswersByAttemptId(attemptId: string): Promise<QuizAnswer[]>;
+  createQuizAnswer(answer: InsertQuizAnswer): Promise<QuizAnswer>;
+  
+  // BYOD operations
+  getByodSessions(sessionId: string): Promise<ByodSession[]>;
+  createByodSession(session: InsertByodSession): Promise<ByodSession>;
+  getByodObservations(sessionId: string): Promise<ByodObservation[]>;
+  createByodObservation(observation: InsertByodObservation): Promise<ByodObservation>;
 }
 
 export class MemStorage implements IStorage {
@@ -36,6 +68,13 @@ export class MemStorage implements IStorage {
   private labProgress: Map<string, LabProgress>;
   private bundles: Map<string, Bundle>;
   private artifacts: Map<string, Artifact>;
+  private quizzes: Map<string, Quiz>;
+  private questions: Map<string, Question>;
+  private choices: Map<string, Choice>;
+  private quizAttempts: Map<string, QuizAttempt>;
+  private quizAnswers: Map<string, QuizAnswer>;
+  private byodSessions: Map<string, ByodSession>;
+  private byodObservations: Map<string, ByodObservation>;
 
   constructor() {
     this.users = new Map();
@@ -43,9 +82,18 @@ export class MemStorage implements IStorage {
     this.labProgress = new Map();
     this.bundles = new Map();
     this.artifacts = new Map();
+    this.quizzes = new Map();
+    this.questions = new Map();
+    this.choices = new Map();
+    this.quizAttempts = new Map();
+    this.quizAnswers = new Map();
+    this.byodSessions = new Map();
+    this.byodObservations = new Map();
     
-    // Seed with default FHIR servers
+    // Seed with default FHIR servers and quizzes
     this.seedFhirServers();
+    // Seed quizzes asynchronously (don't await in constructor)
+    this.seedQuizzes().catch(console.error);
   }
 
   private seedFhirServers() {
@@ -198,6 +246,153 @@ export class MemStorage implements IStorage {
     };
     this.artifacts.set(id, artifact);
     return artifact;
+  }
+
+  private async seedQuizzes() {
+    // Load quiz banks from JSON files
+    try {
+      const { loadQuizBanks } = await import('./quiz/loader');
+      await loadQuizBanks();
+    } catch (error) {
+      console.error('Error loading quiz banks:', error);
+    }
+  }
+
+  // Quiz operations
+  async getQuizzes(): Promise<Quiz[]> {
+    return Array.from(this.quizzes.values());
+  }
+
+  async getQuizBySlug(slug: string): Promise<Quiz | undefined> {
+    return Array.from(this.quizzes.values()).find(quiz => quiz.slug === slug);
+  }
+
+  async createQuiz(insertQuiz: InsertQuiz): Promise<Quiz> {
+    const id = randomUUID();
+    const quiz: Quiz = {
+      ...insertQuiz,
+      id,
+      createdAt: new Date()
+    };
+    this.quizzes.set(id, quiz);
+    return quiz;
+  }
+
+  // Question operations
+  async getQuestionsByQuizId(quizId: string): Promise<Question[]> {
+    return Array.from(this.questions.values()).filter(q => q.quizId === quizId);
+  }
+
+  async createQuestion(insertQuestion: InsertQuestion): Promise<Question> {
+    const id = randomUUID();
+    const question: Question = {
+      ...insertQuestion,
+      id
+    };
+    this.questions.set(id, question);
+    return question;
+  }
+
+  // Choice operations
+  async getChoicesByQuestionId(questionId: string): Promise<Choice[]> {
+    return Array.from(this.choices.values()).filter(c => c.questionId === questionId);
+  }
+
+  async createChoice(insertChoice: InsertChoice): Promise<Choice> {
+    const id = randomUUID();
+    const choice: Choice = {
+      ...insertChoice,
+      id
+    };
+    this.choices.set(id, choice);
+    return choice;
+  }
+
+  // Quiz attempt operations
+  async getQuizAttempts(sessionId: string): Promise<QuizAttempt[]> {
+    return Array.from(this.quizAttempts.values()).filter(
+      attempt => attempt.sessionId === sessionId
+    );
+  }
+
+  async getQuizAttemptsByQuizId(sessionId: string, quizId: string): Promise<QuizAttempt[]> {
+    return Array.from(this.quizAttempts.values()).filter(
+      attempt => attempt.sessionId === sessionId && attempt.quizId === quizId
+    );
+  }
+
+  async createQuizAttempt(insertAttempt: InsertQuizAttempt): Promise<QuizAttempt> {
+    const id = randomUUID();
+    const attempt: QuizAttempt = {
+      ...insertAttempt,
+      id,
+      startedAt: new Date(),
+      completedAt: null
+    };
+    this.quizAttempts.set(id, attempt);
+    return attempt;
+  }
+
+  async updateQuizAttempt(id: string, updates: Partial<QuizAttempt>): Promise<QuizAttempt> {
+    const existing = this.quizAttempts.get(id);
+    if (!existing) {
+      throw new Error(`Quiz attempt ${id} not found`);
+    }
+    const updated = { ...existing, ...updates };
+    this.quizAttempts.set(id, updated);
+    return updated;
+  }
+
+  // Quiz answer operations
+  async getQuizAnswersByAttemptId(attemptId: string): Promise<QuizAnswer[]> {
+    return Array.from(this.quizAnswers.values()).filter(
+      answer => answer.attemptId === attemptId
+    );
+  }
+
+  async createQuizAnswer(insertAnswer: InsertQuizAnswer): Promise<QuizAnswer> {
+    const id = randomUUID();
+    const answer: QuizAnswer = {
+      ...insertAnswer,
+      id
+    };
+    this.quizAnswers.set(id, answer);
+    return answer;
+  }
+
+  // BYOD operations
+  async getByodSessions(sessionId: string): Promise<ByodSession[]> {
+    return Array.from(this.byodSessions.values()).filter(
+      session => session.sessionId === sessionId
+    );
+  }
+
+  async createByodSession(insertSession: InsertByodSession): Promise<ByodSession> {
+    const id = randomUUID();
+    const session: ByodSession = {
+      ...insertSession,
+      id,
+      createdAt: new Date()
+    };
+    this.byodSessions.set(id, session);
+    return session;
+  }
+
+  async getByodObservations(sessionId: string): Promise<ByodObservation[]> {
+    return Array.from(this.byodObservations.values()).filter(
+      obs => obs.sessionId === sessionId
+    );
+  }
+
+  async createByodObservation(insertObservation: InsertByodObservation): Promise<ByodObservation> {
+    const id = randomUUID();
+    const observation: ByodObservation = {
+      ...insertObservation,
+      id,
+      createdAt: new Date()
+    };
+    this.byodObservations.set(id, observation);
+    return observation;
   }
 }
 

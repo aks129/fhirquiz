@@ -1,0 +1,155 @@
+{
+  "quiz": {
+    "slug": "fhir-basics",
+    "title": "FHIR Fundamentals",
+    "description": "Test your basic understanding of FHIR concepts and best practices",
+    "timeLimit": 25,
+    "passingScore": 80
+  },
+  "questions": [
+    {
+      "id": "q1-fhir-acronym",
+      "stem": "What does FHIR stand for?",
+      "choices": [
+        { "id": "a", "label": "Fast Healthcare Information Resources", "is_correct": false },
+        { "id": "b", "label": "Fast Healthcare Interoperability Resources", "is_correct": true },
+        { "id": "c", "label": "Federal Healthcare Information Registry", "is_correct": false },
+        { "id": "d", "label": "Framework for Healthcare Information Records", "is_correct": false }
+      ],
+      "explanation": "FHIR stands for Fast Healthcare Interoperability Resources. It's a standard for exchanging healthcare information electronically, developed by HL7.",
+      "tags": ["basics", "terminology", "hl7"]
+    },
+    {
+      "id": "q2-resource-types",
+      "stem": "Which of these is NOT a standard FHIR resource type?",
+      "choices": [
+        { "id": "a", "label": "Patient", "is_correct": false },
+        { "id": "b", "label": "Encounter", "is_correct": false },
+        { "id": "c", "label": "MedicalRecord", "is_correct": true },
+        { "id": "d", "label": "Observation", "is_correct": false }
+      ],
+      "explanation": "Patient, Encounter, and Observation are all standard FHIR resource types. 'MedicalRecord' is not a FHIR resource - instead, FHIR uses multiple specific resources like Patient, Encounter, Condition, etc.",
+      "tags": ["resources", "resource-types", "standards"]
+    },
+    {
+      "id": "q3-patient-vs-encounter",
+      "stem": "What's the key difference between a Patient and an Encounter resource?",
+      "choices": [
+        { "id": "a", "label": "Patients are for inpatients, Encounters are for outpatients", "is_correct": false },
+        { "id": "b", "label": "Patient represents a person; Encounter represents a specific interaction with healthcare", "is_correct": true },
+        { "id": "c", "label": "Patients contain medical data, Encounters contain demographic data", "is_correct": false },
+        { "id": "d", "label": "There is no difference", "is_correct": false }
+      ],
+      "explanation": "A Patient resource represents a person receiving healthcare services. An Encounter represents a specific interaction between a patient and healthcare provider (like a visit, admission, or appointment).",
+      "tags": ["patient", "encounter", "resource-relationships"]
+    },
+    {
+      "id": "q4-observation-purpose",
+      "stem": "What is the primary purpose of the Observation resource?",
+      "choices": [
+        { "id": "a", "label": "To store patient demographic information", "is_correct": false },
+        { "id": "b", "label": "To record measurements, assessments, and other clinical findings", "is_correct": true },
+        { "id": "c", "label": "To schedule appointments", "is_correct": false },
+        { "id": "d", "label": "To track medication prescriptions", "is_correct": false }
+      ],
+      "explanation": "Observation resources capture measurements, assessments, and clinical findings like vital signs, lab results, risk scores, symptoms, and other clinical data points.",
+      "tags": ["observation", "clinical-data", "measurements"]
+    },
+    {
+      "id": "q5-bundle-types",
+      "stem": "Which Bundle type would you use to get search results from a FHIR server?",
+      "choices": [
+        { "id": "a", "label": "transaction", "is_correct": false },
+        { "id": "b", "label": "collection", "is_correct": false },
+        { "id": "c", "label": "searchset", "is_correct": true },
+        { "id": "d", "label": "history", "is_correct": false }
+      ],
+      "explanation": "A 'searchset' bundle is returned by FHIR servers when you perform a search query. It contains the matching resources and may include pagination information.",
+      "tags": ["bundles", "search", "bundle-types"]
+    },
+    {
+      "id": "q6-fhir-search-params",
+      "stem": "Which search parameter would you use to find all resources updated after a specific date?",
+      "choices": [
+        { "id": "a", "label": "_id", "is_correct": false },
+        { "id": "b", "label": "_lastUpdated", "is_correct": true },
+        { "id": "c", "label": "subject", "is_correct": false },
+        { "id": "d", "label": "date", "is_correct": false }
+      ],
+      "explanation": "_lastUpdated is a standard search parameter that allows you to filter resources based on when they were last modified on the server. Useful for incremental synchronization.",
+      "tags": ["search", "parameters", "date-filtering", "synchronization"]
+    },
+    {
+      "id": "q7-subject-search",
+      "stem": "To find all Observations for a specific patient, which search parameter should you use?",
+      "choices": [
+        { "id": "a", "label": "patient", "is_correct": false },
+        { "id": "b", "label": "subject", "is_correct": true },
+        { "id": "c", "label": "_id", "is_correct": false },
+        { "id": "d", "label": "encounter", "is_correct": false }
+      ],
+      "explanation": "While 'patient' might seem logical, the standard FHIR search parameter for the subject of an Observation is 'subject'. This works for both Patient and other subject types.",
+      "tags": ["search", "subject", "observations", "patient-data"]
+    },
+    {
+      "id": "q8-when-publish-back",
+      "stem": "When should you publish calculated results back to a FHIR server as Observations?",
+      "choices": [
+        { "id": "a", "label": "Never - calculated results should stay in your analytics system", "is_correct": false },
+        { "id": "b", "label": "When the results provide clinical value and can inform patient care", "is_correct": true },
+        { "id": "c", "label": "Always - all calculations should be shared", "is_correct": false },
+        { "id": "d", "label": "Only when required by law", "is_correct": false }
+      ],
+      "explanation": "Publish calculated results (like risk scores, trends, assessments) back to FHIR when they provide clinical value and can inform patient care decisions. This completes the analytics-to-action loop.",
+      "tags": ["operationalization", "clinical-value", "decision-support", "care-integration"]
+    },
+    {
+      "id": "q9-public-server-phi",
+      "stem": "What type of data should you NEVER upload to public FHIR test servers?",
+      "choices": [
+        { "id": "a", "label": "Synthetic patient data", "is_correct": false },
+        { "id": "b", "label": "Test data with fake names", "is_correct": false },
+        { "id": "c", "label": "Real Protected Health Information (PHI)", "is_correct": true },
+        { "id": "d", "label": "Educational examples", "is_correct": false }
+      ],
+      "explanation": "Never upload real PHI (protected health information) to public test servers. Use synthetic data, de-identified data, or test data. Public servers don't have proper security controls for real patient data.",
+      "tags": ["privacy", "phi", "public-servers", "data-safety", "hipaa"]
+    },
+    {
+      "id": "q10-fhir-json-format",
+      "stem": "What format does FHIR primarily use for data exchange?",
+      "choices": [
+        { "id": "a", "label": "XML only", "is_correct": false },
+        { "id": "b", "label": "JSON and XML", "is_correct": true },
+        { "id": "c", "label": "CSV", "is_correct": false },
+        { "id": "d", "label": "Binary format only", "is_correct": false }
+      ],
+      "explanation": "FHIR supports both JSON and XML formats for data exchange, with JSON being increasingly popular for web applications and APIs due to its simplicity and smaller size.",
+      "tags": ["formats", "json", "xml", "data-exchange"]
+    },
+    {
+      "id": "q11-rest-operations",
+      "stem": "Which HTTP method is used to create a new FHIR resource?",
+      "choices": [
+        { "id": "a", "label": "GET", "is_correct": false },
+        { "id": "b", "label": "POST", "is_correct": true },
+        { "id": "c", "label": "PUT", "is_correct": false },
+        { "id": "d", "label": "DELETE", "is_correct": false }
+      ],
+      "explanation": "POST is used to create new resources on a FHIR server. PUT is used for updates, GET for reading, and DELETE for removal. This follows standard RESTful API conventions.",
+      "tags": ["rest", "http-methods", "create", "api"]
+    },
+    {
+      "id": "q12-fhir-validation",
+      "stem": "What should you always validate before uploading FHIR resources?",
+      "choices": [
+        { "id": "a", "label": "Only check that JSON is valid", "is_correct": false },
+        { "id": "b", "label": "Validate against FHIR schemas and business rules", "is_correct": true },
+        { "id": "c", "label": "Only check required fields are present", "is_correct": false },
+        { "id": "d", "label": "Validation is not necessary", "is_correct": false }
+      ],
+      "explanation": "Always validate FHIR resources against both structural schemas (correct JSON/XML format) and business rules (required fields, valid codes, proper references, cardinality constraints).",
+      "tags": ["validation", "schemas", "business-rules", "quality-assurance"]
+    }
+  ]
+}

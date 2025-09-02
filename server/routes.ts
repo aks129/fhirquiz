@@ -1,7 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertFhirServerSchema, insertLabProgressSchema, insertBundleSchema, insertArtifactSchema } from "@shared/schema";
+import { insertFhirServerSchema, insertLabProgressSchema, insertBundleSchema, insertArtifactSchema,
+         insertQuizAttemptSchema, insertQuizAnswerSchema, type QuizData, type QuizSubmission, 
+         type QuizResult } from "@shared/schema";
 import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
@@ -445,6 +447,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(bundles);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch bundles" });
+    }
+  });
+
+  // Quiz endpoints
+  app.get("/api/quiz/:slug", async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const quiz = await storage.getQuizBySlug(slug);
+      
+      if (!quiz) {
+        return res.status(404).json({ error: "Quiz not found" });
+      }
+      
+      const questions = await storage.getQuestionsByQuizId(quiz.id);
+      const questionsWithChoices = await Promise.all(
+        questions.map(async (question) => {
+          const choices = await storage.getChoicesByQuestionId(question.id);
+          // Remove is_correct from choices for security
+          const sanitizedChoices = choices.map(({ isCorrect, ...choice }) => choice);
+          return { ...question, choices: sanitizedChoices };
+        })
+      );
+      
+      const quizData: QuizData = {
+        quiz,
+        questions: questionsWithChoices
+      };
+      
+      res.json(quizData);
+    } catch (error) {
+      console.error("Error fetching quiz:", error);
+      res.status(500).json({ error: "Failed to fetch quiz" });
+    }
+  });
+
+  app.post("/api/quiz/:slug/grade", async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const submission: QuizSubmission = req.body;
+      
+      const quiz = await storage.getQuizBySlug(slug);
+      if (!quiz) {
+        return res.status(404).json({ error: "Quiz not found" });
+      }
+      
+      const questions = await storage.getQuestionsByQuizId(quiz.id);
+      let correctAnswers = 0;
+      const feedback = [];
+      
+      for (const question of questions) {
+        const choices = await storage.getChoicesByQuestionId(question.id);
+        const userAnswer = submission.answers.find(a => a.questionId === question.id);
+        const correctChoice = choices.find(c => c.isCorrect);
+        const selectedChoice = userAnswer ? choices.find(c => c.id === userAnswer.choiceId) : null;
+        
+        const isCorrect = userAnswer?.choiceId === correctChoice?.id;
+        if (isCorrect) correctAnswers++;
+        
+        feedback.push({
+          questionId: question.id,
+          questionText: question.questionText,
+          selectedChoice: selectedChoice?.choiceText || "No answer selected",
+          correctChoice: correctChoice?.choiceText || "Unknown",
+          isCorrect,
+          explanation: question.explanation || ""
+        });
+      }
+      
+      const score = Math.round((correctAnswers / questions.length) * 100);
+      const passed = score >= (quiz.passingScore || 80);
+      
+      const result: QuizResult = {
+        score,
+        passed,
+        totalQuestions: questions.length,
+        correctAnswers,
+        feedback
+      };
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error grading quiz:", error);
+      res.status(500).json({ error: "Failed to grade quiz" });
+    }
+  });
+
+  app.post("/api/quiz/:slug/attempt", async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const { answers, duration, score, passed } = req.body;
+      const sessionId = req.headers['x-session-id'] as string;
+      
+      const quiz = await storage.getQuizBySlug(slug);
+      if (!quiz) {
+        return res.status(404).json({ error: "Quiz not found" });
+      }
+      
+      // Create quiz attempt
+      const attempt = await storage.createQuizAttempt({
+        sessionId,
+        quizId: quiz.id,
+        score,
+        passed,
+        duration,
+        userId: null
+      });
+      
+      // Update attempt with completion time
+      const completedAttempt = await storage.updateQuizAttempt(attempt.id, {
+        completedAt: new Date()
+      });
+      
+      // Create quiz answers
+      for (const answer of answers) {
+        const choices = await storage.getChoicesByQuestionId(answer.questionId);
+        const selectedChoice = choices.find(c => c.id === answer.choiceId);
+        
+        await storage.createQuizAnswer({
+          attemptId: attempt.id,
+          questionId: answer.questionId,
+          choiceId: answer.choiceId,
+          isCorrect: selectedChoice?.isCorrect || false
+        });
+      }
+      
+      res.json(completedAttempt);
+    } catch (error) {
+      console.error("Error recording quiz attempt:", error);
+      res.status(500).json({ error: "Failed to record quiz attempt" });
+    }
+  });
+
+  app.get("/api/quiz-attempts", async (req, res) => {
+    try {
+      const sessionId = req.headers['x-session-id'] as string;
+      const attempts = await storage.getQuizAttempts(sessionId);
+      res.json(attempts);
+    } catch (error) {
+      console.error("Error fetching quiz attempts:", error);
+      res.status(500).json({ error: "Failed to fetch quiz attempts" });
     }
   });
 

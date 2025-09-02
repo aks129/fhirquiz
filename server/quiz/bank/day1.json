@@ -1,0 +1,107 @@
+{
+  "quiz": {
+    "slug": "day1",
+    "title": "Day 1: FHIR Data Ingestion",
+    "description": "Test your understanding of FHIR data ingestion concepts",
+    "timeLimit": 15,
+    "passingScore": 80
+  },
+  "questions": [
+    {
+      "id": "q1-bundle-type",
+      "stem": "When uploading patient data to a FHIR server, which Bundle type should you use?",
+      "choices": [
+        { "id": "a", "label": "collection", "is_correct": false },
+        { "id": "b", "label": "transaction", "is_correct": true },
+        { "id": "c", "label": "searchset", "is_correct": false },
+        { "id": "d", "label": "history", "is_correct": false }
+      ],
+      "explanation": "Transaction bundles are used when creating or updating resources on a FHIR server. They ensure atomic operations - either all resources are processed successfully, or none are.",
+      "tags": ["bundles", "ingestion", "transaction"]
+    },
+    {
+      "id": "q2-identifiers",
+      "stem": "What's the difference between a FHIR resource 'id' and an 'identifier'?",
+      "choices": [
+        { "id": "a", "label": "They are the same thing", "is_correct": false },
+        { "id": "b", "label": "ID is server-assigned and unique per server; identifier is business-assigned and globally meaningful", "is_correct": true },
+        { "id": "c", "label": "ID is for humans; identifier is for computers", "is_correct": false },
+        { "id": "d", "label": "Identifiers are only used in bundles", "is_correct": false }
+      ],
+      "explanation": "Resource IDs are assigned by the FHIR server and only unique within that server. Identifiers are business identifiers like SSN, MRN, or other meaningful codes that have significance across systems.",
+      "tags": ["identifiers", "ids", "resources"]
+    },
+    {
+      "id": "q3-references",
+      "stem": "In a FHIR Bundle, how do you reference a Patient from an Observation that doesn't have a server ID yet?",
+      "choices": [
+        { "id": "a", "label": "Use the patient's SSN", "is_correct": false },
+        { "id": "b", "label": "Use a temporary UUID reference", "is_correct": true },
+        { "id": "c", "label": "Leave the reference empty", "is_correct": false },
+        { "id": "d", "label": "Use the patient's name", "is_correct": false }
+      ],
+      "explanation": "In transaction bundles, use temporary UUIDs (like 'urn:uuid:12345') to reference resources that don't have server IDs yet. The server will resolve these references during processing.",
+      "tags": ["references", "bundles", "uuid"]
+    },
+    {
+      "id": "q4-synthea-data",
+      "stem": "Why do we use Synthea data in this bootcamp instead of real patient data?",
+      "choices": [
+        { "id": "a", "label": "Synthea data is more accurate", "is_correct": false },
+        { "id": "b", "label": "Real PHI should never be uploaded to public test servers", "is_correct": true },
+        { "id": "c", "label": "Synthea data is easier to work with", "is_correct": false },
+        { "id": "d", "label": "Public servers don't accept real data", "is_correct": false }
+      ],
+      "explanation": "Using real protected health information (PHI) on public test servers violates HIPAA and other privacy regulations. Always use synthetic or de-identified data for learning and testing.",
+      "tags": ["synthea", "privacy", "phi", "hipaa"]
+    },
+    {
+      "id": "q5-csv-export",
+      "stem": "When exporting FHIR resources to CSV for analytics, what's the main challenge?",
+      "choices": [
+        { "id": "a", "label": "CSV files are too small", "is_correct": false },
+        { "id": "b", "label": "FHIR resources are hierarchical/nested, CSV is flat", "is_correct": true },
+        { "id": "c", "label": "FHIR servers don't support CSV", "is_correct": false },
+        { "id": "d", "label": "Analytics tools can't read CSV", "is_correct": false }
+      ],
+      "explanation": "FHIR resources have complex nested structures (arrays, objects within objects), while CSV is a flat format. You need to flatten or denormalize the data structure.",
+      "tags": ["csv", "export", "analytics", "data-structure"]
+    },
+    {
+      "id": "q6-resource-count",
+      "stem": "After uploading a Bundle with 10 Patient resources and 25 Observation resources, your analytics show 35 total resources. What does this indicate?",
+      "choices": [
+        { "id": "a", "label": "The upload failed", "is_correct": false },
+        { "id": "b", "label": "The upload was successful", "is_correct": true },
+        { "id": "c", "label": "Some resources were duplicated", "is_correct": false },
+        { "id": "d", "label": "The server is misconfigured", "is_correct": false }
+      ],
+      "explanation": "35 total resources (10 Patients + 25 Observations) indicates a successful upload where all resources in the bundle were processed correctly.",
+      "tags": ["upload", "validation", "resource-count"]
+    },
+    {
+      "id": "q7-fhir-versions",
+      "stem": "What FHIR version are we using in this bootcamp?",
+      "choices": [
+        { "id": "a", "label": "DSTU2", "is_correct": false },
+        { "id": "b", "label": "STU3", "is_correct": false },
+        { "id": "c", "label": "R4", "is_correct": true },
+        { "id": "d", "label": "R5", "is_correct": false }
+      ],
+      "explanation": "This bootcamp uses FHIR R4, which is the current widely-adopted standard. R4 is stable and supported by most healthcare systems.",
+      "tags": ["fhir-version", "r4", "standards"]
+    },
+    {
+      "id": "q8-bundle-validation",
+      "stem": "Before uploading a Bundle to a FHIR server, what should you always check first?",
+      "choices": [
+        { "id": "a", "label": "The server's CapabilityStatement", "is_correct": true },
+        { "id": "b", "label": "The bundle size", "is_correct": false },
+        { "id": "c", "label": "The number of resources", "is_correct": false },
+        { "id": "d", "label": "The server's uptime", "is_correct": false }
+      ],
+      "explanation": "The CapabilityStatement tells you which resource types the server supports, what operations are allowed, and what FHIR version it uses. Always check this first.",
+      "tags": ["capability-statement", "validation", "server-compatibility"]
+    }
+  ]
+}
