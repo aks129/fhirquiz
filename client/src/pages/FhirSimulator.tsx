@@ -196,6 +196,16 @@ export default function FhirSimulator() {
     type: 'transaction',
     entries: [{ method: 'POST', url: '', resource: {} }]
   });
+  const [conditionalHelpers, setConditionalHelpers] = useState({
+    createResourceType: 'Patient',
+    createCondition: 'identifier',
+    createValue: '',
+    updateResourceType: 'Patient',
+    updateCondition: 'identifier',
+    updateValue: '',
+    etag: '',
+    profileUrl: ''
+  });
 
   // Load persisted data and handle prefill on component mount
   useEffect(() => {
@@ -712,6 +722,281 @@ export default function FhirSimulator() {
     });
     
     handleSendRequest();
+  };
+
+  // Conditional and Helper functions
+  const setupConditionalCreate = () => {
+    const { createResourceType, createCondition, createValue } = conditionalHelpers;
+    if (!createCondition || !createValue) return;
+
+    const ifNoneExist = `${createCondition}=${createValue}`;
+    
+    setRequest(prev => ({
+      ...prev,
+      method: 'POST',
+      path: `/${createResourceType}`,
+      headers: {
+        ...prev.headers,
+        'If-None-Exist': ifNoneExist,
+        'Content-Type': 'application/fhir+json'
+      }
+    }));
+
+    toast({
+      title: "Conditional Create Setup",
+      description: `Configured POST /${createResourceType} with If-None-Exist: ${ifNoneExist}`
+    });
+  };
+
+  const setupConditionalUpdate = () => {
+    const { updateResourceType, updateCondition, updateValue } = conditionalHelpers;
+    if (!updateCondition || !updateValue) return;
+
+    const searchUrl = `/${updateResourceType}?${updateCondition}=${encodeURIComponent(updateValue)}`;
+    
+    setRequest(prev => ({
+      ...prev,
+      method: 'PUT',
+      path: searchUrl,
+      headers: {
+        ...prev.headers,
+        'Content-Type': 'application/fhir+json'
+      }
+    }));
+
+    toast({
+      title: "Conditional Update Setup", 
+      description: `Configured PUT ${searchUrl}`
+    });
+  };
+
+  const fetchETag = async () => {
+    if (!request.path || request.method !== 'GET') {
+      toast({
+        title: "ETag Fetch Error",
+        description: "Set up a GET request first to fetch ETag",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const response = await sendRequestMutation.mutateAsync();
+      const etag = response.headers?.etag || response.headers?.ETag;
+      if (etag) {
+        setConditionalHelpers(prev => ({ ...prev, etag }));
+        toast({
+          title: "ETag Retrieved",
+          description: `ETag: ${etag}`
+        });
+      } else {
+        toast({
+          title: "No ETag Found",
+          description: "Server did not return an ETag header",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "ETag Fetch Failed",
+        description: "Failed to fetch ETag from server",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const useETagForUpdate = () => {
+    if (!conditionalHelpers.etag) {
+      toast({
+        title: "No ETag Available",
+        description: "Fetch an ETag first using GET request",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setRequest(prev => ({
+      ...prev,
+      method: 'PUT',
+      headers: {
+        ...prev.headers,
+        'If-Match': conditionalHelpers.etag,
+        'Content-Type': 'application/fhir+json'
+      }
+    }));
+
+    toast({
+      title: "ETag Applied",
+      description: `Added If-Match header: ${conditionalHelpers.etag}`
+    });
+  };
+
+  const addProfileToResource = () => {
+    if (!conditionalHelpers.profileUrl || !request.body) return;
+
+    try {
+      const resource = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
+      
+      if (!resource.meta) {
+        resource.meta = {};
+      }
+      if (!resource.meta.profile) {
+        resource.meta.profile = [];
+      }
+      
+      if (!resource.meta.profile.includes(conditionalHelpers.profileUrl)) {
+        resource.meta.profile.push(conditionalHelpers.profileUrl);
+      }
+
+      setRequest(prev => ({ ...prev, body: resource }));
+
+      toast({
+        title: "Profile Added",
+        description: `Added profile: ${conditionalHelpers.profileUrl}`
+      });
+    } catch (error) {
+      toast({
+        title: "Profile Addition Failed",
+        description: "Invalid JSON in request body",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const validateResource = async () => {
+    if (!request.body) {
+      toast({
+        title: "No Resource to Validate",
+        description: "Add a resource to the request body first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const resource = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
+      const resourceType = resource.resourceType;
+      
+      if (!resourceType) {
+        toast({
+          title: "Validation Error",
+          description: "Resource must have a resourceType",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // First try server validation if supported
+      try {
+        const validateResponse = await apiRequest('POST', `/sim/request`, {
+          method: 'POST',
+          path: `/${resourceType}/$validate`,
+          headers: { 'Content-Type': 'application/fhir+json' },
+          body: resource
+        });
+
+        if (validateResponse.body) {
+          const outcome = typeof validateResponse.body === 'string' 
+            ? JSON.parse(validateResponse.body) 
+            : validateResponse.body;
+          
+          setResponse(prev => ({
+            ...prev,
+            body: formatJson(outcome),
+            status: validateResponse.status,
+            headers: validateResponse.headers || {}
+          }));
+
+          toast({
+            title: "Server Validation Complete",
+            description: "Check response for validation results"
+          });
+        }
+      } catch (serverError) {
+        // Fallback to local validation
+        const localValidation = performLocalValidation(resource);
+        
+        const outcome = {
+          resourceType: 'OperationOutcome',
+          issue: localValidation.map(issue => ({
+            severity: issue.severity,
+            code: 'structure',
+            details: { text: issue.message }
+          }))
+        };
+
+        setResponse(prev => ({
+          ...prev,
+          body: formatJson(outcome),
+          status: localValidation.some(i => i.severity === 'error') ? 400 : 200,
+          headers: { 'Content-Type': 'application/fhir+json' }
+        }));
+
+        toast({
+          title: "Local Validation Complete",
+          description: `Found ${localValidation.length} issues`
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Validation Failed",
+        description: "Invalid JSON in request body",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const performLocalValidation = (resource: any) => {
+    const issues: Array<{severity: string, message: string}> = [];
+    const resourceType = resource.resourceType;
+
+    // Common validation rules
+    if (!resourceType) {
+      issues.push({ severity: 'error', message: 'resourceType is required' });
+    }
+
+    // Resource-specific validation
+    switch (resourceType) {
+      case 'Patient':
+        if (!resource.name || !Array.isArray(resource.name) || resource.name.length === 0) {
+          issues.push({ severity: 'warning', message: 'Patient should have at least one name' });
+        }
+        if (!resource.gender) {
+          issues.push({ severity: 'warning', message: 'Patient should have a gender' });
+        }
+        break;
+
+      case 'Observation':
+        if (!resource.status) {
+          issues.push({ severity: 'error', message: 'Observation.status is required' });
+        }
+        if (!resource.code) {
+          issues.push({ severity: 'error', message: 'Observation.code is required' });
+        }
+        if (!resource.subject) {
+          issues.push({ severity: 'warning', message: 'Observation should reference a subject' });
+        }
+        break;
+
+      case 'Encounter':
+        if (!resource.status) {
+          issues.push({ severity: 'error', message: 'Encounter.status is required' });
+        }
+        if (!resource.class) {
+          issues.push({ severity: 'error', message: 'Encounter.class is required' });
+        }
+        if (!resource.subject) {
+          issues.push({ severity: 'warning', message: 'Encounter should reference a subject' });
+        }
+        break;
+
+      default:
+        if (resourceType) {
+          issues.push({ severity: 'info', message: `No specific validation rules for ${resourceType}` });
+        }
+    }
+
+    return issues;
   };
 
   // Fetch history
@@ -1342,10 +1627,11 @@ export default function FhirSimulator() {
                     <Label className="text-sm font-medium">Request Body</Label>
                     
                     <Tabs defaultValue="raw" className="w-full">
-                      <TabsList className="grid w-full grid-cols-3">
+                      <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="raw">Raw</TabsTrigger>
                         <TabsTrigger value="bundle">Bundle Composer</TabsTrigger>
                         <TabsTrigger value="template">Templates</TabsTrigger>
+                        <TabsTrigger value="helpers">Helpers</TabsTrigger>
                       </TabsList>
                       
                       {/* Raw Body Editor */}
@@ -1595,6 +1881,196 @@ export default function FhirSimulator() {
                             <div className="font-medium">Observation</div>
                             <div className="text-xs text-gray-500">Vital signs observation</div>
                           </Button>
+                        </div>
+                      </TabsContent>
+
+                      {/* Helpers */}
+                      <TabsContent value="helpers" className="space-y-6">
+                        {/* Conditional Operations */}
+                        <div className="space-y-4">
+                          <h3 className="font-medium text-base">Conditional Operations</h3>
+                          
+                          {/* Conditional Create */}
+                          <div className="border rounded-lg p-4 space-y-3">
+                            <h4 className="font-medium text-sm">Conditional Create</h4>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div>
+                                <Label className="text-xs">Resource Type</Label>
+                                <Select
+                                  value={conditionalHelpers.createResourceType}
+                                  onValueChange={(value) => setConditionalHelpers(prev => ({ ...prev, createResourceType: value }))}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Patient">Patient</SelectItem>
+                                    <SelectItem value="Observation">Observation</SelectItem>
+                                    <SelectItem value="Encounter">Encounter</SelectItem>
+                                    <SelectItem value="Practitioner">Practitioner</SelectItem>
+                                    <SelectItem value="Organization">Organization</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Condition</Label>
+                                <Input
+                                  className="h-8 text-xs"
+                                  placeholder="identifier"
+                                  value={conditionalHelpers.createCondition}
+                                  onChange={(e) => setConditionalHelpers(prev => ({ ...prev, createCondition: e.target.value }))}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Value</Label>
+                                <Input
+                                  className="h-8 text-xs"
+                                  placeholder="12345"
+                                  value={conditionalHelpers.createValue}
+                                  onChange={(e) => setConditionalHelpers(prev => ({ ...prev, createValue: e.target.value }))}
+                                />
+                              </div>
+                            </div>
+                            <Button size="sm" onClick={setupConditionalCreate} data-testid="setup-conditional-create">
+                              Setup Conditional Create
+                            </Button>
+                          </div>
+
+                          {/* Conditional Update */}
+                          <div className="border rounded-lg p-4 space-y-3">
+                            <h4 className="font-medium text-sm">Conditional Update</h4>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div>
+                                <Label className="text-xs">Resource Type</Label>
+                                <Select
+                                  value={conditionalHelpers.updateResourceType}
+                                  onValueChange={(value) => setConditionalHelpers(prev => ({ ...prev, updateResourceType: value }))}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Patient">Patient</SelectItem>
+                                    <SelectItem value="Observation">Observation</SelectItem>
+                                    <SelectItem value="Encounter">Encounter</SelectItem>
+                                    <SelectItem value="Practitioner">Practitioner</SelectItem>
+                                    <SelectItem value="Organization">Organization</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Condition</Label>
+                                <Input
+                                  className="h-8 text-xs"
+                                  placeholder="identifier"
+                                  value={conditionalHelpers.updateCondition}
+                                  onChange={(e) => setConditionalHelpers(prev => ({ ...prev, updateCondition: e.target.value }))}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Value</Label>
+                                <Input
+                                  className="h-8 text-xs"
+                                  placeholder="12345"
+                                  value={conditionalHelpers.updateValue}
+                                  onChange={(e) => setConditionalHelpers(prev => ({ ...prev, updateValue: e.target.value }))}
+                                />
+                              </div>
+                            </div>
+                            <Button size="sm" onClick={setupConditionalUpdate} data-testid="setup-conditional-update">
+                              Setup Conditional Update
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* ETag Support */}
+                        <div className="space-y-4">
+                          <h3 className="font-medium text-base">ETag Support</h3>
+                          <div className="border rounded-lg p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <Label className="text-sm">Current ETag</Label>
+                                <Input
+                                  className="mt-1 text-xs font-mono"
+                                  placeholder="No ETag fetched"
+                                  value={conditionalHelpers.etag}
+                                  readOnly
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={fetchETag}
+                                disabled={request.method !== 'GET' || !request.path}
+                                data-testid="fetch-etag"
+                              >
+                                <Download className="h-4 w-4 mr-1" />
+                                Fetch ETag
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={useETagForUpdate}
+                                disabled={!conditionalHelpers.etag}
+                                data-testid="use-etag"
+                              >
+                                Use for Update
+                              </Button>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              Set up a GET request first, then fetch ETag to use for safe updates with If-Match header.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Resource Validation */}
+                        <div className="space-y-4">
+                          <h3 className="font-medium text-base">Resource Validation</h3>
+                          <div className="border rounded-lg p-4 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                onClick={validateResource}
+                                disabled={!request.body}
+                                data-testid="validate-resource"
+                              >
+                                <Settings className="h-4 w-4 mr-1" />
+                                Validate Resource
+                              </Button>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              Validates resource using server $validate operation or local schema validation.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Profile Support */}
+                        <div className="space-y-4">
+                          <h3 className="font-medium text-base">Profile Hinting</h3>
+                          <div className="border rounded-lg p-4 space-y-3">
+                            <div>
+                              <Label className="text-sm">Profile URL</Label>
+                              <Input
+                                className="mt-1"
+                                placeholder="https://example.org/fhir/StructureDefinition/my-patient"
+                                value={conditionalHelpers.profileUrl}
+                                onChange={(e) => setConditionalHelpers(prev => ({ ...prev, profileUrl: e.target.value }))}
+                              />
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={addProfileToResource}
+                              disabled={!conditionalHelpers.profileUrl || !request.body}
+                              data-testid="add-profile"
+                            >
+                              <Plus className="h-4 w-4 mr-1" />
+                              Add to meta.profile
+                            </Button>
+                            <p className="text-xs text-gray-500">
+                              Adds the profile URL to the resource's meta.profile array for validation hinting.
+                            </p>
+                          </div>
                         </div>
                       </TabsContent>
                     </Tabs>
