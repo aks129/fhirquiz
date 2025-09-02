@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupCors, extractUser } from "./auth";
+import { registerAuthRoutes } from "./routes-auth";
 import { insertFhirServerSchema, insertLabProgressSchema, insertBundleSchema, insertArtifactSchema,
          insertQuizAttemptSchema, insertQuizAnswerSchema, type QuizData, type QuizSubmission, 
          type QuizResult } from "@shared/schema";
@@ -11,6 +13,12 @@ import { extractHealthMetrics, generateMetricsPreview, createFhirObservations, p
 import { getActiveFhirBaseUrl, getCurrentFhirBaseUrl, checkLocalFhirHealth, persistConfig, config } from "./config";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup CORS
+  setupCors(app);
+  
+  // Extract JWT user from all requests
+  app.use(extractUser);
+  
   // Session middleware for anonymous users
   app.use('/api', (req, res, next) => {
     if (!req.headers['x-session-id']) {
@@ -18,6 +26,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   });
+
+  // Register authentication routes
+  registerAuthRoutes(app);
 
   // FHIR Server endpoints
   app.get("/api/fhir/servers", async (req, res) => {
