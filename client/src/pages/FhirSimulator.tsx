@@ -42,8 +42,10 @@ interface Collection {
 interface RequestData {
   method: string;
   path: string;
+  queryParams: Record<string, string>;
   headers: Record<string, string>;
   body?: any;
+  bodyType: 'json' | 'xml';
 }
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
@@ -154,25 +156,82 @@ export default function FhirSimulator() {
   const [request, setRequest] = useState<RequestData>({
     method: "GET",
     path: "/Patient",
-    headers: {}
+    queryParams: {},
+    headers: {},
+    bodyType: 'json'
+  });
+  
+  const [envVars, setEnvVars] = useState<Record<string, string>>({
+    BASE_URL: 'http://localhost:8080/fhir',
+    PATIENT_ID: 'example-patient-123',
+    ENCOUNTER_ID: 'example-encounter-456',
+    OBSERVATION_ID: 'example-observation-789'
   });
   
   const [response, setResponse] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  // Check for prefilled data from localStorage on component mount
+  // Load persisted data and handle prefill on component mount
   useEffect(() => {
+    // Load persisted request
+    const savedRequest = localStorage.getItem('simulator-last-request');
+    if (savedRequest) {
+      try {
+        const parsedRequest = JSON.parse(savedRequest);
+        setRequest(parsedRequest);
+      } catch (error) {
+        console.error('Failed to parse saved request:', error);
+      }
+    }
+
+    // Load persisted environment variables
+    const savedEnvVars = localStorage.getItem('simulator-env-vars');
+    if (savedEnvVars) {
+      try {
+        const parsedEnvVars = JSON.parse(savedEnvVars);
+        setEnvVars(parsedEnvVars);
+      } catch (error) {
+        console.error('Failed to parse saved environment variables:', error);
+      }
+    }
+
+    // Check for prefilled data from other pages
     const prefillData = localStorage.getItem('simulator-prefill');
     if (prefillData) {
       try {
         const parsedData = JSON.parse(prefillData);
-        setRequest(parsedData);
+        setRequest(prev => ({
+          ...prev,
+          ...parsedData,
+          queryParams: parsedData.queryParams || {},
+          bodyType: parsedData.bodyType || 'json'
+        }));
         localStorage.removeItem('simulator-prefill'); // Clear after use
       } catch (error) {
         console.error('Failed to parse prefill data:', error);
       }
     }
   }, []);
+
+  // Persist request data whenever it changes
+  useEffect(() => {
+    localStorage.setItem('simulator-last-request', JSON.stringify(request));
+  }, [request]);
+
+  // Persist environment variables whenever they change
+  useEffect(() => {
+    localStorage.setItem('simulator-env-vars', JSON.stringify(envVars));
+  }, [envVars]);
+
+  // Function to substitute environment variables in text
+  const substituteEnvVars = (text: string): string => {
+    let result = text;
+    Object.entries(envVars).forEach(([key, value]) => {
+      const pattern = new RegExp(`\\{${key}\\}`, 'g');
+      result = result.replace(pattern, value);
+    });
+    return result;
+  };
 
   // Fetch history
   const { data: history = [] } = useQuery<HistoryEntry[]>({
@@ -185,8 +244,80 @@ export default function FhirSimulator() {
   });
 
   // Send request mutation
+  // Utility functions
+  const validateJSON = (jsonString: string): boolean => {
+    try {
+      JSON.parse(jsonString);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const generateCurlCommand = (): string => {
+    const substitutedPath = substituteEnvVars(request.path);
+    const queryString = Object.entries(request.queryParams)
+      .filter(([, value]) => value.trim())
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(substituteEnvVars(value))}`)
+      .join('&');
+    
+    const fullUrl = `${substituteEnvVars(envVars.BASE_URL)}${substitutedPath}${queryString ? '?' + queryString : ''}`;
+    
+    let curlCommand = `curl -X ${request.method} "${fullUrl}"`;
+    
+    // Add headers
+    Object.entries(request.headers).forEach(([key, value]) => {
+      if (value.trim()) {
+        curlCommand += ` -H "${key}: ${substituteEnvVars(value)}"`;
+      }
+    });
+    
+    // Add body
+    if (request.body && ['POST', 'PUT', 'PATCH'].includes(request.method)) {
+      const bodyString = typeof request.body === 'string' ? request.body : JSON.stringify(request.body, null, 2);
+      curlCommand += ` -d '${substituteEnvVars(bodyString)}'`;
+    }
+    
+    return curlCommand;
+  };
+
+  const clearRequest = () => {
+    setRequest({
+      method: "GET",
+      path: "/Patient",
+      queryParams: {},
+      headers: {},
+      bodyType: 'json'
+    });
+    setResponse(null);
+  };
+
+  const copyToCurlClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(generateCurlCommand());
+      toast({ title: "Success", description: "cURL command copied to clipboard!" });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to copy to clipboard", variant: "destructive" });
+    }
+  };
+
   const sendRequestMutation = useMutation({
-    mutationFn: (data: RequestData) => apiRequest("POST", "/sim/send", data),
+    mutationFn: (data: RequestData) => {
+      // Substitute environment variables in all text fields
+      const processedRequest = {
+        ...data,
+        path: substituteEnvVars(data.path),
+        queryParams: Object.fromEntries(
+          Object.entries(data.queryParams).map(([key, value]) => [key, substituteEnvVars(value)])
+        ),
+        headers: Object.fromEntries(
+          Object.entries(data.headers).map(([key, value]) => [key, substituteEnvVars(value)])
+        ),
+        body: data.body ? (typeof data.body === 'string' ? substituteEnvVars(data.body) : data.body) : undefined
+      };
+
+      return apiRequest("POST", "/sim/send", processedRequest);
+    },
     onSuccess: (response) => {
       setResponse(response);
       queryClient.invalidateQueries({ queryKey: ["/sim/history"] });
@@ -255,8 +386,10 @@ export default function FhirSimulator() {
     setRequest({
       method: entry.method,
       path: entry.path,
+      queryParams: {},
       headers: entry.headers || {},
       body: entry.body ? JSON.parse(entry.body) : undefined,
+      bodyType: 'json'
     });
   };
 
@@ -264,8 +397,10 @@ export default function FhirSimulator() {
     setRequest({
       method: sample.method,
       path: sample.path,
+      queryParams: {},
       headers: {},
       body: sample.body,
+      bodyType: 'json'
     });
   };
 
@@ -355,7 +490,7 @@ export default function FhirSimulator() {
                                   </p>
                                 </div>
                                 <Button
-                                  size="sm"
+      
                                   variant="ghost"
                                   onClick={() => deleteCollectionMutation.mutate(collection.id)}
                                 >
@@ -511,61 +646,289 @@ export default function FhirSimulator() {
 
           {/* Right Panel: Request Builder & Response Viewer */}
           <div className="space-y-6">
+            {/* Environment Variables */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Environment Variables</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  {Object.entries(envVars).map(([key, value]) => (
+                    <div key={key} className="space-y-1">
+                      <Label className="text-xs font-medium">{key}</Label>
+                      <Input
+                        value={value}
+                        onChange={(e) => setEnvVars(prev => ({ ...prev, [key]: e.target.value }))}
+                        className="text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Request Builder */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Request Builder</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Method and Path */}
                 <div className="flex gap-2">
                   <div className="w-32">
                     <Select value={request.method} onValueChange={(value) => setRequest(prev => ({ ...prev, method: value }))}>
-                      <SelectTrigger>
+                      <SelectTrigger data-testid="method-select">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {HTTP_METHODS.map(method => (
-                          <SelectItem key={method} value={method}>{method}</SelectItem>
+                          <SelectItem key={method} value={method} data-testid={`method-${method.toLowerCase()}`}>{method}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="flex-1">
                     <Input
-                      placeholder="/Patient"
+                      placeholder="/Patient (supports {PATIENT_ID} variables)"
                       value={request.path}
                       onChange={(e) => setRequest(prev => ({ ...prev, path: e.target.value }))}
+                      data-testid="path-input"
                     />
                   </div>
-                  <Button 
-                    onClick={handleSendRequest}
-                    disabled={loading || !request.path}
-                  >
-                    <Play className="h-4 w-4 mr-2" />
-                    Send
-                  </Button>
                 </div>
 
+                {/* Query Parameters */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Query Parameters</Label>
+                  <div className="border rounded-lg">
+                    <div className="grid grid-cols-2 gap-px bg-gray-200 dark:bg-gray-700">
+                      <div className="bg-gray-50 dark:bg-gray-800 px-3 py-2 text-xs font-medium">Key</div>
+                      <div className="bg-gray-50 dark:bg-gray-800 px-3 py-2 text-xs font-medium">Value</div>
+                    </div>
+                    <div className="p-2 space-y-2">
+                      {Object.entries(request.queryParams).map(([key, value], index) => (
+                        <div key={index} className="grid grid-cols-2 gap-2">
+                          <Input
+                            placeholder="name"
+                            value={key}
+                            onChange={(e) => {
+                              const newParams = { ...request.queryParams };
+                              delete newParams[key];
+                              if (e.target.value) {
+                                newParams[e.target.value] = value;
+                              }
+                              setRequest(prev => ({ ...prev, queryParams: newParams }));
+                            }}
+
+                          />
+                          <div className="flex gap-1">
+                            <Input
+                              placeholder="value (supports {PATIENT_ID})"
+                              value={value}
+                              onChange={(e) => {
+                                setRequest(prev => ({
+                                  ...prev,
+                                  queryParams: { ...prev.queryParams, [key]: e.target.value }
+                                }));
+                              }}
+  
+                            />
+                            <Button
+  
+                              variant="ghost"
+                              onClick={() => {
+                                const newParams = { ...request.queryParams };
+                                delete newParams[key];
+                                setRequest(prev => ({ ...prev, queryParams: newParams }));
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const newKey = `param${Object.keys(request.queryParams).length + 1}`;
+                          setRequest(prev => ({
+                            ...prev,
+                            queryParams: { ...prev.queryParams, [newKey]: '' }
+                          }));
+                        }}
+                        className="w-full"
+                      >
+                        Add Parameter
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Headers */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Headers</Label>
+                  <div className="border rounded-lg">
+                    <div className="grid grid-cols-2 gap-px bg-gray-200 dark:bg-gray-700">
+                      <div className="bg-gray-50 dark:bg-gray-800 px-3 py-2 text-xs font-medium">Header</div>
+                      <div className="bg-gray-50 dark:bg-gray-800 px-3 py-2 text-xs font-medium">Value</div>
+                    </div>
+                    <div className="p-2 space-y-2">
+                      {Object.entries(request.headers).map(([key, value], index) => (
+                        <div key={index} className="grid grid-cols-2 gap-2">
+                          <Input
+                            placeholder="Content-Type"
+                            value={key}
+                            onChange={(e) => {
+                              const newHeaders = { ...request.headers };
+                              delete newHeaders[key];
+                              if (e.target.value) {
+                                newHeaders[e.target.value] = value;
+                              }
+                              setRequest(prev => ({ ...prev, headers: newHeaders }));
+                            }}
+
+                          />
+                          <div className="flex gap-1">
+                            <Input
+                              placeholder="application/json"
+                              value={value}
+                              onChange={(e) => {
+                                setRequest(prev => ({
+                                  ...prev,
+                                  headers: { ...prev.headers, [key]: e.target.value }
+                                }));
+                              }}
+  
+                            />
+                            <Button
+  
+                              variant="ghost"
+                              onClick={() => {
+                                const newHeaders = { ...request.headers };
+                                delete newHeaders[key];
+                                setRequest(prev => ({ ...prev, headers: newHeaders }));
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const newKey = 'Content-Type';
+                          setRequest(prev => ({
+                            ...prev,
+                            headers: { ...prev.headers, [newKey]: 'application/fhir+json' }
+                          }));
+                        }}
+                        className="w-full"
+                      >
+                        Add Header
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Request Body */}
                 {(request.method === "POST" || request.method === "PUT" || request.method === "PATCH") && (
-                  <div>
-                    <Label htmlFor="body">Request Body</Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Request Body</Label>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant={request.bodyType === 'json' ? 'default' : 'outline'}
+                          onClick={() => setRequest(prev => ({ ...prev, bodyType: 'json' }))}
+                        >
+                          JSON
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={request.bodyType === 'xml' ? 'default' : 'outline'}
+                          onClick={() => setRequest(prev => ({ ...prev, bodyType: 'xml' }))}
+                        >
+                          XML
+                        </Button>
+                      </div>
+                    </div>
                     <Textarea
-                      id="body"
-                      placeholder="Enter JSON request body..."
-                      value={request.body ? formatJson(request.body) : ""}
+                      placeholder={request.bodyType === 'json' ? 
+                        'Enter JSON request body... (supports {PATIENT_ID} variables)' : 
+                        'Enter XML request body... (supports {PATIENT_ID} variables)'
+                      }
+                      value={request.body ? (typeof request.body === 'string' ? request.body : formatJson(request.body)) : ""}
                       onChange={(e) => {
-                        try {
-                          const body = e.target.value ? JSON.parse(e.target.value) : undefined;
-                          setRequest(prev => ({ ...prev, body }));
-                        } catch {
-                          // Keep the raw text if it's not valid JSON yet
+                        const text = e.target.value;
+                        if (request.bodyType === 'json') {
+                          try {
+                            const body = text ? JSON.parse(text) : undefined;
+                            setRequest(prev => ({ ...prev, body }));
+                          } catch {
+                            // Keep the raw text if it's not valid JSON yet
+                            setRequest(prev => ({ ...prev, body: text }));
+                          }
+                        } else {
+                          setRequest(prev => ({ ...prev, body: text }));
                         }
                       }}
                       rows={8}
                       className="font-mono text-sm"
+                      data-testid="body-editor"
                     />
+                    {request.bodyType === 'json' && request.body && !validateJSON(typeof request.body === 'string' ? request.body : JSON.stringify(request.body)) && (
+                      <p className="text-red-500 text-xs">⚠️ Invalid JSON format</p>
+                    )}
                   </div>
                 )}
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-2 pt-4 border-t">
+                  <Button 
+                    onClick={handleSendRequest}
+                    disabled={loading || !request.path}
+                    data-testid="send-button"
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Send
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const name = prompt("Collection name:");
+                      if (name) {
+                        saveCollectionMutation.mutate({
+                          name,
+                          requests: [request],
+                          tags: [],
+                        });
+                      }
+                    }}
+                    data-testid="save-collection-button"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save to Collection
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={clearRequest}
+                    data-testid="clear-button"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Clear
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={copyToCurlClipboard}
+                    data-testid="copy-curl-button"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Copy as cURL
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
