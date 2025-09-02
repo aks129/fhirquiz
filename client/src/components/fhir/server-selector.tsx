@@ -71,7 +71,7 @@ export default function ServerSelector({ onServerChange }: ServerSelectorProps) 
           description: `Connected to FHIR server (${result.fhirVersion}) in ${result.responseTime}ms`,
         });
         
-        // Mark server setup as complete and ensure the selected server is passed to parent
+        // Mark server setup as complete
         fetch("/api/lab/progress", {
           method: "POST",
           headers: {
@@ -85,9 +85,16 @@ export default function ServerSelector({ onServerChange }: ServerSelectorProps) 
           }),
         });
         
-        // Ensure the selected server is passed to parent after successful test
-        if (selectedServer && onServerChange) {
-          onServerChange(selectedServer);
+        // Force update the parent with the current server state
+        if (onServerChange) {
+          const currentServer = servers.find((s: FhirServer) => s.id === selectedServerId);
+          if (currentServer) {
+            console.log('Forcing server change callback with:', currentServer);
+            // Use setTimeout to ensure this happens after the current render cycle
+            setTimeout(() => {
+              onServerChange(currentServer);
+            }, 100);
+          }
         }
       } else {
         toast({

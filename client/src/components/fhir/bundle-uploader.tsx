@@ -151,8 +151,10 @@ export default function BundleUploader({ fhirServerUrl, onUploadSuccess }: Bundl
             variant="outline"
             disabled={uploadMutation.isPending || !fhirServerUrl}
             data-testid="button-load-sample"
+            title={!fhirServerUrl ? "Please select and test a FHIR server connection first" : "Load sample Synthea data"}
           >
             Load Sample
+            {!fhirServerUrl && <span className="ml-1 text-xs">(Server needed)</span>}
           </Button>
         </div>
 
