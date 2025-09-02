@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Play, Save, Trash2, Clock, Download, Upload, FileText, ArrowDown } from "lucide-react";
+import { Play, Save, Trash2, Clock, Download, Upload, FileText, ArrowDown, Settings, ChevronRight, ChevronLeft, Database, Search } from "lucide-react";
 import { getSelectedServer } from "@/lib/storage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -175,6 +175,11 @@ export default function FhirSimulator() {
   const [responseSearch, setResponseSearch] = useState('');
   const [diffMode, setDiffMode] = useState(false);
   const [selectedDiffResponse, setSelectedDiffResponse] = useState<any>(null);
+  const [showCapabilities, setShowCapabilities] = useState(false);
+  const [capabilityStatement, setCapabilityStatement] = useState<any>(null);
+  const [selectedResource, setSelectedResource] = useState<string | null>(null);
+  const [resourceData, setResourceData] = useState<any>(null);
+  const [resourceLoading, setResourceLoading] = useState(false);
 
   // Load persisted data and handle prefill on component mount
   useEffect(() => {
@@ -309,6 +314,115 @@ export default function FhirSimulator() {
   const getPreviousResponses = (): any[] => {
     const currentPath = substituteEnvVars(request.path);
     return responseHistory.filter(r => r.path === currentPath).slice(-5);
+  };
+
+  // Capabilities functions
+  const fetchCapabilities = async () => {
+    if (capabilityStatement) return; // Already fetched this session
+    
+    try {
+      const response = await apiRequest("POST", "/sim/send", {
+        method: "GET",
+        path: "/metadata",
+        queryParams: {},
+        headers: { "Accept": "application/fhir+json" },
+        bodyType: 'json'
+      });
+      setCapabilityStatement(response.body);
+    } catch (error) {
+      console.error('Failed to fetch capability statement:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch server capabilities",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getSupportedResources = (): Array<{type: string, interactions: string[]}> => {
+    if (!capabilityStatement?.rest?.[0]?.resource) return [];
+    
+    return capabilityStatement.rest[0].resource.map((resource: any) => ({
+      type: resource.type,
+      interactions: resource.interaction?.map((i: any) => i.code) || []
+    }));
+  };
+
+  const getCommonSearchParams = (resourceType: string): Array<{name: string, example: string}> => {
+    const commonParams: Record<string, Array<{name: string, example: string}>> = {
+      Patient: [
+        { name: 'family', example: 'Smith' },
+        { name: 'given', example: 'John' },
+        { name: 'birthdate', example: '1990-01-01' },
+        { name: 'gender', example: 'male' }
+      ],
+      Observation: [
+        { name: 'subject', example: 'Patient/1' },
+        { name: 'code', example: '8867-4' },
+        { name: 'date', example: '2024-01-01' },
+        { name: 'status', example: 'final' }
+      ],
+      Encounter: [
+        { name: 'subject', example: 'Patient/1' },
+        { name: 'status', example: 'finished' },
+        { name: 'date', example: '2024-01-01' }
+      ],
+      Condition: [
+        { name: 'subject', example: 'Patient/1' },
+        { name: 'code', example: 'I10' },
+        { name: 'clinical-status', example: 'active' }
+      ]
+    };
+    
+    return commonParams[resourceType] || [
+      { name: 'id', example: '1' },
+      { name: '_lastUpdated', example: '2024-01-01' }
+    ];
+  };
+
+  const executeResourceAction = async (action: 'list' | 'search', resourceType: string, searchParam?: {name: string, example: string}) => {
+    setResourceLoading(true);
+    try {
+      let path = `/${resourceType}`;
+      const queryParams: Record<string, string> = {};
+      
+      if (action === 'list') {
+        queryParams['_count'] = '10';
+      } else if (action === 'search' && searchParam) {
+        queryParams[searchParam.name] = searchParam.example;
+        queryParams['_count'] = '10';
+      }
+
+      const response = await apiRequest("POST", "/sim/send", {
+        method: "GET",
+        path,
+        queryParams,
+        headers: { "Accept": "application/fhir+json" },
+        bodyType: 'json'
+      });
+      
+      setResourceData(response.body);
+    } catch (error) {
+      console.error(`Failed to fetch ${resourceType}:`, error);
+      toast({
+        title: "Error",
+        description: `Failed to fetch ${resourceType} data`,
+        variant: "destructive"
+      });
+    } finally {
+      setResourceLoading(false);
+    }
+  };
+
+  const openInSimulator = (method: string, path: string, queryParams: Record<string, string> = {}) => {
+    setRequest({
+      method,
+      path,
+      queryParams,
+      headers: { "Accept": "application/fhir+json" },
+      bodyType: 'json'
+    });
+    setShowCapabilities(false); // Close capabilities panel
   };
 
   // Fetch history
@@ -502,20 +616,41 @@ export default function FhirSimulator() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto p-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">FHIR Simulator</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">
-            Test and experiment with FHIR API requests in a safe environment
-          </p>
-          {fhirConfig && (
-            <div className="mt-2">
-              <Badge variant="outline" className="text-sm">
-                Connected to: {(fhirConfig as any)?.useLocalFhir ? 'Local HAPI' : 'Public HAPI'}
-              </Badge>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">FHIR Simulator</h1>
+              <p className="text-gray-600 dark:text-gray-300 mt-2">
+                Test and experiment with FHIR API requests in a safe environment
+              </p>
+              {fhirConfig && (
+                <div className="mt-2">
+                  <Badge variant="outline" className="text-sm">
+                    Connected to: {(fhirConfig as any)?.useLocalFhir ? 'Local HAPI' : 'Public HAPI'}
+                  </Badge>
+                </div>
+              )}
             </div>
-          )}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCapabilities(!showCapabilities);
+                if (!showCapabilities && !capabilityStatement) {
+                  fetchCapabilities();
+                }
+              }}
+              className="flex items-center gap-2"
+              data-testid="capabilities-toggle"
+            >
+              <Database className="h-4 w-4" />
+              Capabilities
+              {showCapabilities ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className={`grid gap-6 transition-all duration-200 ${
+          showCapabilities ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-2'
+        }`}>
           {/* Left Panel: Collections, History, Samples, Challenges */}
           <div className="space-y-6">
             <Tabs defaultValue="history" className="w-full">
@@ -1184,6 +1319,186 @@ export default function FhirSimulator() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Capabilities Panel */}
+          {showCapabilities && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Database className="h-5 w-5" />
+                    Server Capabilities
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!capabilityStatement ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full" />
+                      <span className="ml-2">Loading capabilities...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Server Info */}
+                      <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+                        <div className="text-sm">
+                          <div><strong>Software:</strong> {capabilityStatement.software?.name || 'Unknown'}</div>
+                          <div><strong>Version:</strong> {capabilityStatement.software?.version || 'Unknown'}</div>
+                          <div><strong>FHIR Version:</strong> {capabilityStatement.fhirVersion || 'Unknown'}</div>
+                        </div>
+                      </div>
+
+                      {/* Supported Resources */}
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Supported Resources</Label>
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {getSupportedResources().map((resource, index) => (
+                            <div key={index} className="border rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-medium">{resource.type}</h4>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setSelectedResource(selectedResource === resource.type ? null : resource.type)}
+                                  data-testid={`resource-${resource.type}`}
+                                >
+                                  {selectedResource === resource.type ? 'Close' : 'Explore'}
+                                </Button>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {resource.interactions.map((interaction) => (
+                                  <Badge key={interaction} variant="secondary" className="text-xs">
+                                    {interaction}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Resource Explorer */}
+              {selectedResource && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Search className="h-5 w-5" />
+                      {selectedResource} Explorer
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {/* Quick Actions */}
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Quick Actions</Label>
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          <Button
+                            size="sm"
+                            onClick={() => executeResourceAction('list', selectedResource)}
+                            disabled={resourceLoading}
+                            data-testid="list-resources"
+                          >
+                            List (10 items)
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openInSimulator('GET', `/${selectedResource}`, { _count: '10' })}
+                            data-testid="open-list-simulator"
+                          >
+                            Open in Simulator
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Search Parameters */}
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Common Search Parameters</Label>
+                        <div className="space-y-2">
+                          {getCommonSearchParams(selectedResource).map((param, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 border rounded">
+                              <div className="flex-1">
+                                <code className="text-sm font-mono">{param.name}={param.example}</code>
+                              </div>
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => executeResourceAction('search', selectedResource, param)}
+                                  disabled={resourceLoading}
+                                  data-testid={`search-${param.name}`}
+                                >
+                                  Search
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    const queryParams: Record<string, string> = {};
+                                    queryParams[param.name] = param.example;
+                                    queryParams['_count'] = '10';
+                                    openInSimulator('GET', `/${selectedResource}`, queryParams);
+                                  }}
+                                  data-testid={`open-search-${param.name}`}
+                                >
+                                  Open in Simulator
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Results */}
+                      {resourceLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full" />
+                          <span className="ml-2">Loading data...</span>
+                        </div>
+                      ) : resourceData ? (
+                        <div>
+                          <Label className="text-sm font-medium mb-2 block">Results</Label>
+                          <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+                            <div className="mb-2 text-sm text-gray-600 dark:text-gray-400">
+                              Total: {resourceData.total || 0} | Showing: {resourceData.entry?.length || 0}
+                            </div>
+                            <ScrollArea className="h-48">
+                              {resourceData.entry?.length > 0 ? (
+                                <div className="space-y-2">
+                                  {resourceData.entry.slice(0, 10).map((entry: any, index: number) => (
+                                    <div key={index} className="border rounded p-2 text-xs">
+                                      <div className="font-mono text-blue-600 dark:text-blue-400">
+                                        ID: {entry.resource?.id}
+                                      </div>
+                                      {entry.resource?.resourceType === 'Patient' && (
+                                        <div>
+                                          Name: {entry.resource.name?.[0]?.given?.join(' ')} {entry.resource.name?.[0]?.family}
+                                        </div>
+                                      )}
+                                      {entry.resource?.resourceType === 'Observation' && (
+                                        <div>
+                                          Code: {entry.resource.code?.coding?.[0]?.display || entry.resource.code?.text}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-center text-gray-500 py-4">No data found</div>
+                              )}
+                            </ScrollArea>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
