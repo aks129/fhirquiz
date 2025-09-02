@@ -32,6 +32,10 @@ import Rewards from "@/pages/rewards";
 import Profile from "@/pages/profile";
 import Auth from "@/pages/auth";
 import Portal from "@/pages/Portal";
+import Terms from "@/pages/Terms";
+import Privacy from "@/pages/Privacy";
+import Security from "@/pages/Security";
+import Help from "@/pages/Help";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import NavigationHeader from "@/components/layout/navigation-header";
 import SidebarNavigation from "@/components/layout/sidebar-navigation";
@@ -44,7 +48,7 @@ function Router() {
   const { user } = useAuth();
 
   // Determine if we're in marketing mode or app mode
-  const marketingPaths = ["/", "/curriculum", "/pricing", "/docs", "/terms", "/privacy", "/contact"];
+  const marketingPaths = ["/", "/curriculum", "/pricing", "/docs", "/terms", "/privacy", "/security", "/help", "/contact", "/demo"];
   const isMarketingMode = marketingPaths.includes(location) || (!user && location === "/");
   
   // Handle portal routing
@@ -64,10 +68,13 @@ function Router() {
         <Switch>
           <Route path="/" component={Landing} />
           <Route path="/curriculum" component={() => <div>Curriculum page</div>} />
-          <Route path="/pricing" component={() => <div>Pricing page</div>} />
+          <Route path="/pricing" component={Pricing} />
+          <Route path="/demo" component={DemoPage} />
           <Route path="/docs" component={() => <div>Documentation page</div>} />
-          <Route path="/terms" component={() => <div>Terms page</div>} />
-          <Route path="/privacy" component={() => <div>Privacy page</div>} />
+          <Route path="/terms" component={Terms} />
+          <Route path="/privacy" component={Privacy} />
+          <Route path="/security" component={Security} />
+          <Route path="/help" component={Help} />
           <Route path="/contact" component={() => <div>Contact page</div>} />
           <Route component={NotFound} />
         </Switch>
@@ -76,7 +83,7 @@ function Router() {
   }
 
   // Check if we're in portal mode (new authenticated dashboard)
-  const portalPaths = ["/portal", "/bootcamp", "/byod", "/gallery", "/rewards", "/billing", "/profile", "/help"];
+  const portalPaths = ["/portal", "/bootcamp", "/byod", "/gallery", "/rewards", "/billing", "/profile"];
   const isPortalMode = portalPaths.some(path => location.startsWith(path));
 
   if (isPortalMode && user) {
@@ -91,7 +98,6 @@ function Router() {
           <Route path="/billing/success" component={BillingSuccess} />
           <Route path="/billing/cancel" component={BillingCancel} />
           <Route path="/profile" component={Profile} />
-          <Route path="/help" component={() => <div className="p-6"><h1>Help & Support</h1><p>Coming soon...</p></div>} />
           <Route component={NotFound} />
         </Switch>
       </AuthenticatedLayout>
