@@ -23,12 +23,21 @@ export default function BillingSuccess() {
   const { toast } = useToast();
   const [sessionId, setSessionId] = useState<string | null>(null);
 
-  // Extract session_id from URL params
+  // Extract session_id from URL params and show success toast
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('session_id');
     setSessionId(id);
-  }, [location]);
+    
+    // Show purchase success toast
+    if (id) {
+      toast({
+        title: "🎉 Purchase successful!",
+        description: "Welcome to the FHIR Healthcare Bootcamp! Your learning journey begins now.",
+        variant: "default"
+      });
+    }
+  }, [location, toast]);
 
   // Fetch session details
   const { data: session, isLoading, error } = useQuery<CheckoutSession>({
@@ -44,6 +53,12 @@ export default function BillingSuccess() {
       return response;
     },
     onSuccess: (data) => {
+      toast({
+        title: "Portal opened",
+        description: "Billing portal opened in new tab. Manage your subscription there.",
+        variant: "default"
+      });
+      
       if (data.url) {
         window.open(data.url, '_blank');
       }

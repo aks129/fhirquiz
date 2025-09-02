@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useSessionStore } from '@/stores/sessionStore'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useToast } from '@/hooks/use-toast'
 import { Loader2, LogIn } from 'lucide-react'
 
 const APP_BASE_URL = import.meta.env.APP_BASE_URL || window.location.origin
@@ -13,6 +14,7 @@ interface AuthGateProps {
 
 export function AuthGate({ children }: AuthGateProps) {
   const { user, profile, setUser, setProfile } = useSessionStore()
+  const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [signingIn, setSigningIn] = useState(false)
 
@@ -32,7 +34,21 @@ export function AuthGate({ children }: AuthGateProps) {
       async (event, session) => {
         setUser(session?.user ?? null)
         
-        if (session?.user) {
+        if (event === 'SIGNED_IN' && session?.user) {
+          toast({
+            title: "Welcome back!",
+            description: "You have successfully signed in to the FHIR Bootcamp platform.",
+            variant: "default"
+          })
+          await fetchOrCreateProfile(session.user.id)
+        } else if (event === 'SIGNED_OUT') {
+          toast({
+            title: "Signed out",
+            description: "You have been successfully signed out. See you next time!",
+            variant: "default"
+          })
+          setProfile(null)
+        } else if (session?.user) {
           await fetchOrCreateProfile(session.user.id)
         } else {
           setProfile(null)
@@ -95,9 +111,19 @@ export function AuthGate({ children }: AuthGateProps) {
 
       if (error) {
         console.error('Error signing in:', error)
+        toast({
+          title: "Sign-in failed",
+          description: error.message || "Failed to sign in with Google. Please try again.",
+          variant: "destructive"
+        })
       }
     } catch (error) {
       console.error('Error signing in:', error)
+      toast({
+        title: "Sign-in error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      })
     } finally {
       setSigningIn(false)
     }

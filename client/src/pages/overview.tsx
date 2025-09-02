@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link } from "wouter";
 import { LabProgress } from "@/types/api";
-import { PlayCircle, Sparkles } from "lucide-react";
+import { PlayCircle, Sparkles, Shield, AlertTriangle } from "lucide-react";
 
 export default function Overview() {
   const { data: progress = [] } = useQuery<LabProgress[]>({
@@ -54,6 +54,27 @@ export default function Overview() {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* PHI Safety Notice */}
+      <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950">
+        <Shield className="h-4 w-4 text-blue-600" />
+        <AlertDescription>
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <p className="font-semibold text-blue-800 dark:text-blue-200">🛡️ Important: PHI Safety Guidelines</p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                This bootcamp uses synthetic patient data for training. <strong>Never upload real patient data to public FHIR servers.</strong> 
+                For real data, use Local HAPI or your organization's private server.
+              </p>
+            </div>
+            <Link href="/lab/day1">
+              <Button variant="outline" size="sm" className="text-blue-600 border-blue-300 hover:bg-blue-100">
+                Learn More
+              </Button>
+            </Link>
+          </div>
+        </AlertDescription>
+      </Alert>
 
       {/* Hero Section */}
       <div className="mb-8">

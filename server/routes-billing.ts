@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import Stripe from "stripe";
 import { requireUser } from "./auth";
+import { checkoutRateLimit } from "./middleware/rateLimiter";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -17,7 +18,7 @@ const APP_BASE_URL = process.env.REPLIT_DEV_DOMAIN
 export function registerBillingRoutes(app: Express) {
   
   // Create Stripe Checkout Session
-  app.post("/api/billing/create-checkout-session", requireUser, async (req, res) => {
+  app.post("/api/billing/create-checkout-session", checkoutRateLimit, requireUser, async (req, res) => {
     try {
       const { priceId, trialDays } = req.body;
       const user = (req as any).user;

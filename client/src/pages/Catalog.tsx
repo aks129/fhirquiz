@@ -49,6 +49,13 @@ export default function Catalog() {
       return response;
     },
     onSuccess: (data) => {
+      // Show checkout initiation toast
+      toast({
+        title: "Redirecting to checkout",
+        description: "Taking you to secure Stripe checkout to complete your purchase.",
+        variant: "default"
+      });
+      
       // Redirect to Stripe Checkout
       if (data.url) {
         window.location.href = data.url;

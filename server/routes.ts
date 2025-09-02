@@ -5,6 +5,7 @@ import { setupCors, extractUser } from "./auth";
 import { registerAuthRoutes } from "./routes-auth";
 import { registerAdminRoutes } from "./routes-admin";
 import { registerBillingRoutes } from "./routes-billing";
+import { pointsRateLimit, redemptionRateLimit } from "./middleware/rateLimiter";
 import { insertFhirServerSchema, insertLabProgressSchema, insertBundleSchema, insertArtifactSchema,
          insertQuizAttemptSchema, insertQuizAnswerSchema, type QuizData, type QuizSubmission, 
          type QuizResult } from "@shared/schema";
@@ -1129,7 +1130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/points/award", async (req, res) => {
+  app.post("/api/points/award", pointsRateLimit, async (req, res) => {
     try {
       const { userId, points, reason, milestone } = req.body;
       
@@ -1177,7 +1178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Points redemption endpoint
-  app.post("/api/points/redeem", async (req, res) => {
+  app.post("/api/points/redeem", redemptionRateLimit, async (req, res) => {
     try {
       const { rewardCode } = req.body;
       const userId = req.user?.id;

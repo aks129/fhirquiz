@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { authHandler, requireUser, requireAdmin } from "./auth";
+import { authRateLimit } from "./middleware/rateLimiter";
 
 export function registerAuthRoutes(app: Express) {
   // Get current user profile and role
@@ -40,7 +41,7 @@ export function registerAuthRoutes(app: Express) {
   });
 
   // Create/update user profile (for frontend AuthGate)
-  app.post("/api/auth/profile", async (req, res) => {
+  app.post("/api/auth/profile", authRateLimit, async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({ error: "Authentication required" });

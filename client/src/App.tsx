@@ -24,6 +24,7 @@ import Catalog from "@/pages/Catalog";
 import BillingSuccess from "@/pages/BillingSuccess";
 import BillingCancel from "@/pages/BillingCancel";
 import Rewards from "@/pages/rewards";
+import Profile from "@/pages/profile";
 import NavigationHeader from "@/components/layout/navigation-header";
 import SidebarNavigation from "@/components/layout/sidebar-navigation";
 
@@ -55,6 +56,7 @@ function Router() {
             <Route path="/instructor" component={InstructorDashboard} />
             <Route path="/catalog" component={Catalog} />
             <Route path="/rewards" component={Rewards} />
+            <Route path="/profile" component={Profile} />
             <Route path="/billing/success" component={BillingSuccess} />
             <Route path="/billing/cancel" component={BillingCancel} />
             <Route component={NotFound} />
