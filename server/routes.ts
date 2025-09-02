@@ -595,6 +595,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isCorrect: selectedChoice?.isCorrect || false
         });
       }
+
+      // Award points for first-time quiz completion
+      const userId = req.user?.id;
+      if (userId && passed) {
+        // Check if this is the first successful attempt for this quiz
+        const previousAttempts = await storage.getQuizAttempts(sessionId);
+        const previousPassed = previousAttempts.filter(a => 
+          a.quizId === quiz.id && 
+          a.passed === true && 
+          a.id !== attempt.id
+        );
+
+        if (previousPassed.length === 0) {
+          // This is the first successful attempt
+          const milestoneMap: Record<string, string> = {
+            'fhir-day1': 'quiz_day1_first_pass',
+            'fhir-day2': 'quiz_day2_first_pass', 
+            'fhir-day3': 'quiz_day3_first_pass'
+          };
+
+          const milestone = milestoneMap[slug];
+          if (milestone) {
+            await awardPointsForMilestone(userId, milestone);
+          }
+        }
+      }
       
       res.json(completedAttempt);
     } catch (error) {
@@ -683,6 +709,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           effectiveDate: obs.effectiveDate,
           fhirServerId
         });
+      }
+
+      // Award points for BYOD completion if user is authenticated
+      const userId = req.user?.id;
+      if (userId && results.length > 0) {
+        await awardPointsForMilestone(userId, 'byod_complete');
       }
       
       res.json({
@@ -978,12 +1010,218 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const result = await response.json();
+      
+      // Award points for observation publishing if user is authenticated
+      const userId = req.user?.id;
+      if (userId) {
+        await awardPointsForMilestone(userId, 'observation_published');
+      }
+      
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating observation:", error);
       res.status(500).json({ error: "Failed to create observation" });
     }
   });
+
+  // Points management endpoints
+  app.get("/api/points/:userId", async (req, res) => {
+    try {
+      const { supabase } = await import('./auth');
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('fhir_points')
+        .eq('id', req.params.userId)
+        .single();
+        
+      if (error) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json({ points: profile.fhir_points });
+    } catch (error) {
+      console.error('Error fetching points:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/points/award", async (req, res) => {
+    try {
+      const { userId, points, reason, milestone } = req.body;
+      
+      if (!userId || !points || !reason) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      const { supabase } = await import('./auth');
+      
+      // Get current points
+      const { data: profile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('fhir_points')
+        .eq('id', userId)
+        .single();
+        
+      if (fetchError) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Update points
+      const newPoints = profile.fhir_points + points;
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ fhir_points: newPoints })
+        .eq('id', userId);
+        
+      if (updateError) {
+        throw updateError;
+      }
+      
+      // Log the points award
+      console.log(`Awarded ${points} points to user ${userId} for ${reason}`);
+      
+      res.json({ 
+        success: true, 
+        newTotal: newPoints,
+        awarded: points,
+        reason 
+      });
+    } catch (error) {
+      console.error('Error awarding points:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Points redemption endpoint
+  app.post("/api/points/redeem", async (req, res) => {
+    try {
+      const { rewardCode } = req.body;
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      if (!rewardCode) {
+        return res.status(400).json({ error: "Reward code is required" });
+      }
+      
+      const { supabase } = await import('./auth');
+      
+      // Define reward costs
+      const rewardCosts: Record<string, number> = {
+        'fhir-template-bundle': 50,
+        'synthetic-patient-dataset': 75,
+        'advanced-analytics-lab': 100,
+        'hl7-integration-guide': 60,
+        'interoperability-specialist': 150,
+        'real-world-dataset': 120
+      };
+      
+      const pointCost = rewardCosts[rewardCode];
+      if (!pointCost) {
+        return res.status(404).json({ error: "Invalid reward code" });
+      }
+      
+      // Get current points
+      const { data: profile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('fhir_points')
+        .eq('id', userId)
+        .single();
+        
+      if (fetchError) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Check if user has enough points
+      if (profile.fhir_points < pointCost) {
+        return res.status(400).json({ 
+          error: "Insufficient points",
+          required: pointCost,
+          available: profile.fhir_points
+        });
+      }
+      
+      // Deduct points
+      const newPoints = profile.fhir_points - pointCost;
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ fhir_points: newPoints })
+        .eq('id', userId);
+        
+      if (updateError) {
+        throw updateError;
+      }
+      
+      // In a real implementation, you might:
+      // 1. Generate a download token/URL
+      // 2. Store redemption record in database
+      // 3. Send email with download link
+      
+      console.log(`User ${userId} redeemed reward ${rewardCode} for ${pointCost} points`);
+      
+      res.json({
+        success: true,
+        pointsDeducted: pointCost,
+        newBalance: newPoints,
+        rewardCode,
+        // You could return a signed download URL here
+        downloadToken: `${rewardCode}-${Date.now()}`
+      });
+    } catch (error) {
+      console.error('Error redeeming reward:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Helper function to award points for milestones
+  async function awardPointsForMilestone(userId: string, milestone: string) {
+    if (!userId) return;
+    
+    const pointValues: Record<string, { points: number; reason: string }> = {
+      'quiz_day1_first_pass': { points: 25, reason: 'Passed Day 1 Quiz (First Attempt)' },
+      'quiz_day2_first_pass': { points: 25, reason: 'Passed Day 2 Quiz (First Attempt)' },
+      'quiz_day3_first_pass': { points: 25, reason: 'Passed Day 3 Quiz (First Attempt)' },
+      'byod_complete': { points: 50, reason: 'Completed BYOD Badge' },
+      'observation_published': { points: 10, reason: 'Published FHIR Observation' }
+    };
+    
+    const milestoneData = pointValues[milestone];
+    if (!milestoneData) return;
+    
+    try {
+      const { supabase } = await import('./auth');
+      
+      // Get current points
+      const { data: profile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('fhir_points')
+        .eq('id', userId)
+        .single();
+        
+      if (fetchError) {
+        console.error('User not found for milestone award:', userId);
+        return;
+      }
+      
+      // Update points
+      const newPoints = profile.fhir_points + milestoneData.points;
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ fhir_points: newPoints })
+        .eq('id', userId);
+        
+      if (updateError) {
+        console.error('Error updating points:', updateError);
+        return;
+      }
+      
+      console.log(`Milestone achieved: ${milestone} (+${milestoneData.points} points) for user ${userId}`);
+    } catch (error) {
+      console.error('Error awarding milestone points:', error);
+    }
+  }
 
   const httpServer = createServer(app);
   return httpServer;

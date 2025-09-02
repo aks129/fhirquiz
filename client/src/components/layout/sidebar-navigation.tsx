@@ -85,6 +85,12 @@ export default function SidebarNavigation() {
       icon: "fas fa-trophy",
     },
     {
+      id: "rewards",
+      path: "/rewards",
+      label: "Rewards Store",
+      icon: "fas fa-gift",
+    },
+    {
       id: "demo",
       path: "/demo",
       label: "🎭 Demo Mode",
