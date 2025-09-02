@@ -1,0 +1,4 @@
+Activity Type,Date,Favorite,Title,Distance,Calories,Time,Avg HR,Max HR,Aerobic TE,Avg Run Cadence,Max Run Cadence,Avg Speed,Best Pace,Total Ascent,Total Descent,Avg Stroke Rate,Avg Strokes/Length,Pool Length,Decompression,Best Lap Time,Number of Laps,Min Temp,Max Temp,Moving Time,Elapsed Time,Min Elevation,Max Elevation
+Running,2024-01-15,false,Morning Run,5.00,350,27:30,150,175,3.2,180,190,10.91,4:30,25,20,,,,,5:20,6,,,27:30,30:00,45,70
+Walking,2024-01-15,false,Evening Walk,2.40,120,30:00,95,110,1.5,,,4.8,12:30,5,10,,,,,,,,,30:00,35:00,40,45
+Cycling,2024-01-16,false,Bike Ride,15.50,480,45:00,125,165,4.1,,,20.67,2:54,150,145,,,,,8:45,3,,,45:00,50:00,35,125

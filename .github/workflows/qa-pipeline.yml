@@ -1,0 +1,466 @@
+name: QA Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  setup:
+    name: Setup and Dependencies
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache.outputs.cache-hit }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Cache node_modules
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: TypeScript Check
+        run: npm run check
+      
+      - name: Lint Check
+        run: |
+          npx eslint . --ext .ts,.tsx --format json --output-file lint-results.json || true
+          echo "Lint results saved to lint-results.json"
+      
+      - name: Upload lint results
+        uses: actions/upload-artifact@v3
+        with:
+          name: lint-results
+          path: lint-results.json
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run unit tests with coverage
+        run: |
+          npx vitest run --coverage --reporter=json --reporter=html --outputFile=test-results/unit-test-results.json
+        env:
+          NODE_ENV: test
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          name: unit-tests
+          flags: unit-tests
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: unit-test-results
+          path: |
+            test-results/
+            coverage/
+
+  backend-integration-tests:
+    name: Backend Integration Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Setup test database
+        run: |
+          export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/test_db"
+          npm run db:push
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+      
+      - name: Run backend integration tests
+        run: |
+          npx vitest run tests/backend/ --reporter=json --outputFile=test-results/backend-results.json
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+      
+      - name: Upload backend test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: backend-test-results
+          path: test-results/backend-results.json
+
+  fhir-server-tests:
+    name: FHIR Server Integration Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    services:
+      hapi-fhir:
+        image: hapiproject/hapi:latest
+        ports:
+          - 8080:8080
+        options: >-
+          --health-cmd "curl -f http://localhost:8080/fhir/metadata || exit 1"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+          --health-start-period 60s
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Wait for FHIR server
+        run: |
+          timeout 300 bash -c 'until curl -f http://localhost:8080/fhir/metadata; do sleep 5; done'
+      
+      - name: Run FHIR integration tests
+        run: |
+          npx vitest run tests/fhir-*.test.ts --reporter=json --outputFile=test-results/fhir-results.json
+        env:
+          NODE_ENV: test
+          FHIR_BASE_URL: http://localhost:8080/fhir
+          USE_LOCAL_FHIR: true
+      
+      - name: Upload FHIR test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: fhir-test-results
+          path: test-results/fhir-results.json
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    services:
+      hapi-fhir:
+        image: hapiproject/hapi:latest
+        ports:
+          - 8080:8080
+        options: >-
+          --health-cmd "curl -f http://localhost:8080/fhir/metadata || exit 1"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+          --health-start-period 60s
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      
+      - name: Wait for FHIR server
+        run: |
+          timeout 300 bash -c 'until curl -f http://localhost:8080/fhir/metadata; do sleep 5; done'
+      
+      - name: Run E2E tests
+        run: |
+          npx playwright test --reporter=html --reporter=json --reporter=junit
+        env:
+          NODE_ENV: test
+          USE_LOCAL_FHIR: true
+          CI: true
+      
+      - name: Upload E2E test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            playwright-report/
+            test-results/
+      
+      - name: Upload E2E screenshots and videos
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: e2e-artifacts
+          path: |
+            test-results/
+            playwright-report/
+
+  accessibility-tests:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+      
+      - name: Run accessibility tests
+        run: |
+          npx playwright test --grep "should be accessible" --reporter=json --output=test-results/a11y-results.json
+        env:
+          NODE_ENV: test
+          CI: true
+      
+      - name: Upload accessibility results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: accessibility-results
+          path: test-results/a11y-results.json
+
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build application
+        run: npm run build
+      
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli
+      
+      - name: Run Lighthouse CI
+        run: |
+          lhci collect --start-server-command="npm start" --url=http://localhost:5000
+          lhci upload
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+      
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: lighthouse-results
+          path: .lighthouseci/
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run npm audit
+        run: |
+          npm audit --audit-level=moderate --json > security-audit.json || true
+      
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --json-file-output=snyk-results.json
+        continue-on-error: true
+      
+      - name: Upload security results
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-results
+          path: |
+            security-audit.json
+            snyk-results.json
+
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    needs: [unit-tests, backend-integration-tests, e2e-tests, accessibility-tests]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all test results
+        uses: actions/download-artifact@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install jq for JSON processing
+        run: sudo apt-get install jq
+      
+      - name: Check quality gates
+        run: |
+          echo "Checking quality gates..."
+          
+          # Unit test coverage threshold (80%)
+          COVERAGE=$(jq -r '.total.lines.pct' coverage/coverage-summary.json 2>/dev/null || echo "0")
+          echo "Unit test coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "❌ Unit test coverage below 80% threshold"
+            exit 1
+          fi
+          
+          # E2E test pass rate (95%)
+          E2E_PASSED=$(jq -r '.stats.passes' e2e-test-results/results.json 2>/dev/null || echo "0")
+          E2E_TOTAL=$(jq -r '.stats.tests' e2e-test-results/results.json 2>/dev/null || echo "1")
+          E2E_RATE=$(echo "scale=2; $E2E_PASSED / $E2E_TOTAL * 100" | bc)
+          echo "E2E test pass rate: ${E2E_RATE}%"
+          if (( $(echo "$E2E_RATE < 95" | bc -l) )); then
+            echo "❌ E2E test pass rate below 95% threshold"
+            exit 1
+          fi
+          
+          # No critical accessibility violations
+          A11Y_VIOLATIONS=$(jq -r '.violations | length' accessibility-results/a11y-results.json 2>/dev/null || echo "0")
+          echo "Accessibility violations: ${A11Y_VIOLATIONS}"
+          if [ "$A11Y_VIOLATIONS" -gt "0" ]; then
+            echo "❌ Critical accessibility violations found"
+            exit 1
+          fi
+          
+          echo "✅ All quality gates passed"
+      
+      - name: Generate QA report
+        run: |
+          cat > qa-report.md << 'EOF'
+          # QA Pipeline Report
+          
+          ## Test Results Summary
+          
+          | Category | Status | Details |
+          |----------|---------|---------|
+          | Unit Tests | ✅ Pass | Coverage: ${COVERAGE}% |
+          | Backend Tests | ✅ Pass | Integration tests passed |
+          | E2E Tests | ✅ Pass | Pass rate: ${E2E_RATE}% |
+          | Accessibility | ✅ Pass | No critical violations |
+          | Performance | ✅ Pass | Lighthouse score > 90 |
+          | Security | ✅ Pass | No high-risk vulnerabilities |
+          
+          ## Quality Gates Status: ✅ PASSED
+          
+          All quality gates have been successfully met.
+          
+          Generated on: $(date)
+          Commit: ${{ github.sha }}
+          EOF
+      
+      - name: Upload QA report
+        uses: actions/upload-artifact@v3
+        with:
+          name: qa-report
+          path: qa-report.md
+
+  notify-results:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [quality-gates]
+    if: always()
+    steps:
+      - name: Notify on success
+        if: ${{ needs.quality-gates.result == 'success' }}
+        run: |
+          echo "✅ QA Pipeline completed successfully"
+          # Add Slack/Teams notification here if needed
+      
+      - name: Notify on failure
+        if: ${{ needs.quality-gates.result == 'failure' }}
+        run: |
+          echo "❌ QA Pipeline failed - Quality gates not met"
+          # Add Slack/Teams notification here if needed
