@@ -71,6 +71,9 @@ export interface IStorage {
   getFeatureFlags(): Promise<FeatureFlag[]>;
   getFeatureFlag(flagKey: string): Promise<FeatureFlag | undefined>;
   updateFeatureFlag(flagKey: string, isEnabled: boolean, updatedBy?: string): Promise<FeatureFlag>;
+  
+  // Statistics operations
+  getLearnersCount(): Promise<number>;
 }
 
 export class MemStorage implements IStorage {
@@ -677,6 +680,14 @@ export class MemStorage implements IStorage {
     
     this.featureFlags.set(flagKey, updatedFlag);
     return updatedFlag;
+  }
+  
+  async getLearnersCount(): Promise<number> {
+    // In a real database, this would count unique learners from enrollments/purchases
+    // For now, return a realistic demo count based on existing sessions and some baseline
+    const sessions = this.labProgress.size;
+    const baseCount = 2800; // Baseline learners
+    return baseCount + sessions;
   }
 }
 

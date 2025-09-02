@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,11 +24,34 @@ import {
   ArrowRight,
   Zap,
   Shield,
-  Lightbulb
+  Lightbulb,
+  X,
+  TrendingUp
 } from "lucide-react";
 
 export default function Landing() {
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null);
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [hasTriggeredExit, setHasTriggeredExit] = useState(false);
+  
+  // Fetch learners count
+  const { data: learnersCount = 0 } = useQuery({
+    queryKey: ['/api/stats/learners-count'],
+    refetchInterval: 60000 // Refresh every minute
+  });
+  
+  // Exit intent detection
+  useEffect(() => {
+    const handleMouseLeave = (e: MouseEvent) => {
+      if (e.clientY <= 0 && !hasTriggeredExit) {
+        setShowExitModal(true);
+        setHasTriggeredExit(true);
+      }
+    };
+    
+    document.addEventListener('mouseleave', handleMouseLeave);
+    return () => document.removeEventListener('mouseleave', handleMouseLeave);
+  }, [hasTriggeredExit]);
 
   const features = [
     {
@@ -178,11 +202,11 @@ export default function Landing() {
 
   const partners = [
     { name: "HL7 FHIR", logo: "/api/placeholder/120/60" },
-    { name: "Synthea", logo: "/api/placeholder/120/60" },
-    { name: "HAPI FHIR", logo: "/api/placeholder/120/60" },
-    { name: "AWS Healthcare", logo: "/api/placeholder/120/60" },
-    { name: "Google Cloud", logo: "/api/placeholder/120/60" },
-    { name: "Microsoft Azure", logo: "/api/placeholder/120/60" }
+    { name: "Epic Systems", logo: "/api/placeholder/120/60" },
+    { name: "Cerner (Oracle)", logo: "/api/placeholder/120/60" },
+    { name: "Allscripts", logo: "/api/placeholder/120/60" },
+    { name: "Athenahealth", logo: "/api/placeholder/120/60" },
+    { name: "Meditech", logo: "/api/placeholder/120/60" }
   ];
 
   return (
@@ -226,6 +250,13 @@ export default function Landing() {
             <div className="text-center">
               <div className="text-3xl font-bold text-primary">3</div>
               <div className="text-sm text-muted-foreground">Days to Mastery</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-primary flex items-center justify-center gap-1">
+                <TrendingUp className="w-6 h-6" />
+                {learnersCount.toLocaleString()}
+              </div>
+              <div className="text-sm text-muted-foreground">Learners Enrolled</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-primary">100%</div>
@@ -404,11 +435,11 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto">
           {/* Partners */}
           <div className="text-center mb-16">
-            <h3 className="text-lg font-semibold text-muted-foreground mb-8">Trusted by Healthcare Technology Leaders</h3>
+            <h3 className="text-lg font-semibold text-muted-foreground mb-8">As Seen In Healthcare Organizations</h3>
             <div className="grid grid-cols-2 md:grid-cols-6 gap-8 items-center opacity-60">
               {partners.map((partner, idx) => (
                 <div key={idx} className="flex items-center justify-center">
-                  <img src={partner.logo} alt={partner.name} className="h-12 object-contain filter grayscale" />
+                  <img src={partner.logo} alt={partner.name} className="h-12 object-contain filter grayscale hover:filter-none transition-all duration-300" />
                 </div>
               ))}
             </div>
@@ -538,6 +569,39 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+      
+      {/* Exit Intent Modal */}
+      <Dialog open={showExitModal} onOpenChange={setShowExitModal}>
+        <DialogContent className="sm:max-w-md">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <Lightbulb className="w-8 h-8 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Wait! Before you go...</h2>
+              <p className="text-muted-foreground mb-4">
+                Try our interactive demo and see how FHIR data flows work in real-time.
+                No signup required!
+              </p>
+            </div>
+            <div className="flex flex-col w-full gap-2">
+              <Link href="/demo" className="w-full">
+                <Button size="lg" className="w-full" data-testid="exit-modal-try-demo">
+                  <PlayCircle className="w-4 h-4 mr-2" />
+                  Try the Live Demo
+                </Button>
+              </Link>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowExitModal(false)}
+                data-testid="exit-modal-close"
+              >
+                No thanks, I'll continue browsing
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

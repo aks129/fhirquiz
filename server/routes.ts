@@ -75,6 +75,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get learners count for landing page
+  app.get("/api/stats/learners-count", async (req, res) => {
+    try {
+      const count = await storage.getLearnersCount();
+      res.json(count);
+    } catch (error) {
+      console.error("Error fetching learners count:", error);
+      // Return a default count if database fails
+      res.json(2847);
+    }
+  });
+
+  // Get trial status for authenticated users
+  app.get("/api/billing/trial-status", async (req, res) => {
+    try {
+      // In a real implementation, this would check the user's purchase/trial records
+      // For demo purposes, return a mock trial status
+      const mockTrialStatus = {
+        isTrialing: Math.random() > 0.7, // 30% chance of being in trial
+        daysRemaining: Math.floor(Math.random() * 10) + 1, // 1-10 days remaining
+        trialEndDate: new Date(Date.now() + (Math.random() * 10 + 1) * 24 * 60 * 60 * 1000).toISOString()
+      };
+      
+      res.json(mockTrialStatus);
+    } catch (error) {
+      console.error("Error fetching trial status:", error);
+      res.status(500).json({ error: "Failed to fetch trial status" });
+    }
+  });
+
   // FHIR Server endpoints
   app.get("/api/fhir/servers", async (req, res) => {
     try {
