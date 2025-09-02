@@ -64,6 +64,111 @@ curl -X POST http://localhost:5000/ops/reset-class \
 
 **⚠️ WARNING**: Setting `confirm: true` completely wipes the local HAPI FHIR database. All patient data, observations, and resources will be permanently deleted. Use only when starting fresh classes.
 
+## Setup Instructions
+
+### Prerequisites
+
+1. **Node.js 18+** and **npm**
+2. **Docker and Docker Compose** (for local FHIR server)
+3. **Supabase account** (for authentication and database)
+4. **Stripe account** (for payments, optional)
+
+### Environment Configuration
+
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Configure the required environment variables in `.env`:
+
+#### Supabase Setup
+
+1. Go to [supabase.com](https://supabase.com) and create a new project
+2. Navigate to **Settings** → **API** in your Supabase dashboard
+3. Copy your project URL and anon key:
+   ```bash
+   VITE_SUPABASE_URL=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   ```
+4. Copy your service role key (for backend operations):
+   ```bash
+   SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   ```
+
+#### Enable Google Authentication
+
+1. In your Supabase dashboard, go to **Authentication** → **Providers**
+2. Enable **Google** provider
+3. Add your OAuth credentials:
+   - **Client ID**: Get from [Google Cloud Console](https://console.cloud.google.com)
+   - **Client Secret**: Get from Google Cloud Console
+4. Add authorized redirect URLs:
+   - `https://your-project.supabase.co/auth/v1/callback`
+   - `http://localhost:5173/auth/callback` (for development)
+
+#### Stripe Setup (Optional)
+
+1. Go to [stripe.com](https://stripe.com) and create an account
+2. Navigate to **Developers** → **API Keys**
+3. Copy your keys:
+   ```bash
+   STRIPE_SECRET_KEY=sk_test_...
+   ```
+4. Set up webhook endpoint:
+   - URL: `https://your-domain.com/api/webhooks/stripe`
+   - Events: `checkout.session.completed`, `invoice.payment_succeeded`
+   - Copy webhook secret:
+     ```bash
+     STRIPE_WEBHOOK_SECRET=whsec_...
+     ```
+
+#### Create Stripe Products and Prices
+
+1. In Stripe dashboard, go to **Products** → **Add product**
+2. Create products for:
+   - **FHIR Bootcamp Basic**: $99
+   - **FHIR Bootcamp Plus**: $199  
+   - **FHIR 101 Course**: $49
+3. Copy the price IDs and update:
+   ```bash
+   STRIPE_PRICE_IDS_JSON={"bootcamp_basic":"price_xxx","bootcamp_plus":"price_yyy","course_fhir101":"price_zzz"}
+   ```
+
+#### Application URLs
+
+Configure your application URLs:
+```bash
+APP_BASE_URL=http://localhost:5173
+API_BASE_URL=http://localhost:8000
+```
+
+For production, update these to your actual domain names.
+
+### Installation
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Set up the local HAPI FHIR server:
+   ```bash
+   make up
+   ```
+
+3. Wait for health check (30-60 seconds), then seed with sample data:
+   ```bash
+   make seed
+   ```
+
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+The application will be available at `http://localhost:5000`.
+
 ## Development
 
 The application uses synthetic patient data for all exercises and demonstrations, ensuring HIPAA compliance and data privacy.

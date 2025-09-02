@@ -1,0 +1,29 @@
+In apps/backend/db/ add schema.sql and policies.sql. Create tables:
+
+profiles(id uuid pk references auth.users, email text, full_name text, avatar_url text, role text check(role in ('student','instructor','admin')) default 'student', fhir_points int default 0, created_at timestamptz default now())
+
+products(id uuid pk default gen_random_uuid(), sku text unique, name text, description text, active bool default true, metadata jsonb, created_at timestamptz default now())
+
+prices(id uuid pk default gen_random_uuid(), product_sku text references products(sku), stripe_price_id text unique, currency text, unit_amount int, interval text null, created_at timestamptz default now())
+
+purchases(id uuid pk default gen_random_uuid(), user_id uuid references auth.users, product_sku text references products(sku), stripe_subscription_id text null, status text, trial_ends_at timestamptz null, created_at timestamptz default now())
+
+courses(id uuid pk default gen_random_uuid(), slug text unique, title text, summary text, requires_product_sku text null, is_free bool default false, created_at timestamptz default now())
+
+enrollments(id uuid pk default gen_random_uuid(), user_id uuid, course_slug text references courses(slug), progress jsonb default '{}', completed bool default false, certificate_url text null, badge_ids text[] default '{}', created_at timestamptz default now())
+
+badges(id uuid pk default gen_random_uuid(), code text unique, name text, description text, points int default 0)
+
+awards(id uuid pk default gen_random_uuid(), user_id uuid, badge_code text references badges(code), course_slug text null, created_at timestamptz default now())
+
+Add RLS: enable on all tables; policies:
+
+profiles: users can select/update their row; admins can select/update all.
+
+purchases/enrollments/awards: users can select own; admins all.
+
+products/prices/courses/badges: select for everyone; insert/update/delete admin only.
+
+Add admin bootstrap: create an SQL function grant_admin(email text) that sets profiles.role='admin' for the user.
+
+Create a backend script apps/backend/db/init_db.py to run schema.sql & policies.sql via Supabase REST (service key) or direct PostgREST.
