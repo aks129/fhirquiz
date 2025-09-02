@@ -19,11 +19,10 @@ export default function DemoPage() {
   const [demoSessionId, setDemoSessionId] = useState<string | null>(null);
 
   const initializeMutation = useMutation({
-    mutationFn: async () =>
-      apiRequest("/api/demo/initialize", {
-        method: "POST",
-        body: JSON.stringify({ sessionId: "demo-session-123" })
-      }),
+    mutationFn: async (): Promise<DemoInitResponse> => {
+      const response = await apiRequest("POST", "/api/demo/initialize", { sessionId: "demo-session-123" });
+      return response.json();
+    },
     onSuccess: (result: DemoInitResponse) => {
       setDemoSessionId(result.sessionId);
     }
