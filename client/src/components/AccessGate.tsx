@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { useAccess } from "@/hooks/useAccess";
 import { useAuth } from "@/hooks/useAuth";
+import { StartTrialCta } from "@/components/common/CtaButton";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -120,21 +121,23 @@ export default function AccessGate({ courseSlug, children, courseName }: AccessG
               {reason === 'no_purchase' && (
                 <div className="space-y-4">
                   <p className="text-muted-foreground text-center">
-                    Purchase a course package to access this content.
+                    Start your free trial to access this premium content.
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <Link href="/catalog">
-                      <Button size="lg" className="w-full">
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        Browse Packages
-                      </Button>
-                    </Link>
-                    <Button 
-                      variant="outline" 
-                      size="lg" 
-                      className="w-full"
-                      onClick={handleBillingPortal}
-                      disabled={loadingAction === 'portal'}
+                  <div className="space-y-3">
+                    <StartTrialCta size="lg" className="w-full" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <Link href="/catalog">
+                        <Button size="lg" className="w-full" variant="outline">
+                          <ShoppingCart className="h-4 w-4 mr-2" />
+                          Browse Packages
+                        </Button>
+                      </Link>
+                      <Button 
+                        variant="outline" 
+                        size="lg" 
+                        className="w-full"
+                        onClick={handleBillingPortal}
+                        disabled={loadingAction === 'portal'}
                     >
                       {loadingAction === 'portal' ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -142,7 +145,8 @@ export default function AccessGate({ courseSlug, children, courseName }: AccessG
                         <CreditCard className="h-4 w-4 mr-2" />
                       )}
                       Check Billing
-                    </Button>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}

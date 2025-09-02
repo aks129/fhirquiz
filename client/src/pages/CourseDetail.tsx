@@ -24,6 +24,7 @@ import {
   Upload,
   BarChart
 } from "lucide-react";
+import { StickyFooterCta } from "@/components/common/StickyFooterCta";
 
 interface Course {
   id: string;
@@ -622,6 +623,25 @@ export default function CourseDetail() {
           </div>
         </div>
       </div>
+      
+      <StickyFooterCta
+        title={course.title}
+        price={course.isFree ? "Free" : `$${course.price}`}
+        originalPrice={course.originalPrice ? `$${course.originalPrice}` : undefined}
+        discount={course.originalPrice ? `${Math.round(((course.originalPrice - course.price) / course.originalPrice) * 100)}% OFF` : undefined}
+        features={[
+          `${course.duration} of content`,
+          `${course.level} level`,
+          `${course.students.toLocaleString()} students`,
+          `${course.rating}/5.0 rating`
+        ]}
+        testimonial={{
+          text: "Comprehensive and practical - exactly what I needed to master FHIR.",
+          author: "Alex Rivera",
+          role: "Senior Developer"
+        }}
+        variant={course.isFree ? "enroll" : "enroll"}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { CreateAccountCta, DemoModeCta } from "@/components/common/CtaButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -210,22 +211,11 @@ export default function DemoPage() {
               <div className="space-y-2">
                 {!user ? (
                   <>
-                    <Link href="/auth">
-                      <Button size="sm" className="w-full" data-testid="cta-create-account">
-                        <UserCheck className="h-4 w-4 mr-1" />
-                        Create Free Account
-                      </Button>
-                    </Link>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={switchToLoggedInDemo}
-                      data-testid="cta-try-demo-mode"
-                    >
+                    <CreateAccountCta size="sm" className="w-full" data-testid="cta-create-account" />
+                    <DemoModeCta size="sm" className="w-full" data-testid="cta-try-demo-mode">
                       <Eye className="h-4 w-4 mr-1" />
-                      Try Demo Mode
-                    </Button>
+                      Continue in Demo Mode
+                    </DemoModeCta>
                   </>
                 ) : (
                   <Link href="/portal">

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { StickyFooterCta } from "@/components/common/StickyFooterCta";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -480,6 +481,26 @@ export default function Pricing() {
           </div>
         </div>
       </div>
+      
+      <StickyFooterCta
+        title="FHIR Healthcare Bootcamp"
+        price="$299"
+        originalPrice="$499"
+        discount="40% OFF"
+        urgency="Limited Time Offer"
+        features={[
+          "3-Day Intensive Training",
+          "Hands-on Labs",
+          "Industry Certificate",
+          "7-Day Free Trial"
+        ]}
+        testimonial={{
+          text: "This bootcamp completely transformed how I approach healthcare data integration.",
+          author: "Dr. Sarah Chen",
+          role: "Healthcare IT Director"
+        }}
+        variant="enroll"
+      />
     </div>
   );
 }
