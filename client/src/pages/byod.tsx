@@ -3,14 +3,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ImportWizard } from "@/components/byod/import-wizard";
-import { Upload, Zap, BarChart3, Share2, ArrowRight } from "lucide-react";
+import { Upload, Zap, BarChart3, Share2, ArrowRight, Shield, AlertTriangle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 type ByodStep = "intro" | "import" | "apps" | "share";
 
 export default function ByodPage() {
   const [currentStep, setCurrentStep] = useState<ByodStep>("intro");
   const [importData, setImportData] = useState<any>(null);
+  const [safetyMode, setSafetyMode] = useState(true);
+  const [syntheticDataConfirmed, setSyntheticDataConfirmed] = useState(false);
+
+  // Query local FHIR status
+  const { data: fhirBaseUrl } = useQuery({
+    queryKey: ["/api/fhir/base-url"],
+    refetchInterval: 5000,
+  });
+
+  // Determine if using local FHIR
+  const useLocalFhir = fhirBaseUrl?.includes("localhost") || fhirBaseUrl?.includes("127.0.0.1");
 
   const handleImportComplete = (result: { sessionId: string; preview: any }) => {
     setImportData(result);
@@ -229,59 +245,151 @@ export default function ByodPage() {
     </div>
   );
 
-  const renderSharing = () => (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-2">Share & Publish</h1>
-        <p className="text-muted-foreground">
-          Publish your health data as FHIR observations and share your mini-apps
-        </p>
-      </div>
+  const renderSharing = () => {
+    const canPublish = !safetyMode || useLocalFhir || syntheticDataConfirmed;
 
-      <Tabs defaultValue="fhir" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="fhir" data-testid="tab-fhir-publish">FHIR Publishing</TabsTrigger>
-          <TabsTrigger value="apps" data-testid="tab-app-sharing">App Sharing</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="fhir" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Publish to FHIR Server</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                Transform your health data into FHIR-compliant Observation resources 
-                and publish them to a test FHIR server for interoperability practice.
-              </p>
-              
-              <div className="space-y-3">
-                <h4 className="font-medium">Available FHIR Servers</h4>
-                <div className="grid gap-3">
-                  <Card className="p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h5 className="font-medium">HAPI FHIR Test Server</h5>
-                        <p className="text-sm text-muted-foreground">Public R4 server for testing</p>
-                      </div>
-                      <Button size="sm" data-testid="button-publish-hapi">Publish Here</Button>
-                    </div>
-                  </Card>
-                  
-                  <Card className="p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h5 className="font-medium">Medplum Test Server</h5>
-                        <p className="text-sm text-muted-foreground">Developer-friendly FHIR R4</p>
-                      </div>
-                      <Button size="sm" variant="outline" data-testid="button-publish-medplum">Publish Here</Button>
-                    </div>
-                  </Card>
-                </div>
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Share & Publish</h1>
+          <p className="text-muted-foreground">
+            Publish your health data as FHIR observations and share your mini-apps
+          </p>
+        </div>
+
+        {/* Local FHIR Status and Safety Controls */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Safety Controls
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Local FHIR Status */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Label>FHIR Server Status:</Label>
+                {useLocalFhir ? (
+                  <Badge variant="default" className="bg-green-100 text-green-800 border-green-300" data-testid="badge-local-fhir-active">
+                    Local FHIR Active
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300" data-testid="badge-public-fhir-warning">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    Public Server Mode
+                  </Badge>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            </div>
+
+            {/* Safety Mode Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="safety-mode">Safety Mode</Label>
+                <p className="text-sm text-muted-foreground">
+                  Prevents publishing personal data to public servers
+                </p>
+              </div>
+              <Switch
+                id="safety-mode"
+                checked={safetyMode}
+                onCheckedChange={setSafetyMode}
+                data-testid="switch-safety-mode"
+              />
+            </div>
+
+            {/* Warning for Public Server + Safety Mode */}
+            {safetyMode && !useLocalFhir && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Safety Mode is ON.</strong> To publish personal health data, either:
+                  <br />• Turn on Local FHIR from the server selector, or
+                  <br />• Use synthetic/sample data exports only
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Synthetic Data Confirmation when Safety Mode is OFF */}
+            {!safetyMode && !useLocalFhir && (
+              <div className="space-y-3 p-4 border border-orange-200 rounded-lg bg-orange-50">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="synthetic-confirm"
+                    checked={syntheticDataConfirmed}
+                    onCheckedChange={setSyntheticDataConfirmed}
+                    data-testid="checkbox-synthetic-confirm"
+                  />
+                  <Label htmlFor="synthetic-confirm" className="text-sm font-medium">
+                    I confirm I'm only posting synthetic/consented data
+                  </Label>
+                </div>
+                <p className="text-xs text-orange-700">
+                  You're publishing to a public server. Only use synthetic data or data you have explicit consent to share.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Tabs defaultValue="fhir" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="fhir" data-testid="tab-fhir-publish">FHIR Publishing</TabsTrigger>
+            <TabsTrigger value="apps" data-testid="tab-app-sharing">App Sharing</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="fhir" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Publish to FHIR Server</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground">
+                  Transform your health data into FHIR-compliant Observation resources 
+                  and publish them to a test FHIR server for interoperability practice.
+                </p>
+                
+                <div className="space-y-3">
+                  <h4 className="font-medium">Available FHIR Servers</h4>
+                  <div className="grid gap-3">
+                    <Card className="p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h5 className="font-medium">HAPI FHIR Test Server</h5>
+                          <p className="text-sm text-muted-foreground">Public R4 server for testing</p>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          disabled={!canPublish}
+                          data-testid="button-publish-hapi"
+                        >
+                          {canPublish ? "Publish Here" : "Blocked by Safety"}
+                        </Button>
+                      </div>
+                    </Card>
+                    
+                    <Card className="p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h5 className="font-medium">Medplum Test Server</h5>
+                          <p className="text-sm text-muted-foreground">Developer-friendly FHIR R4</p>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          disabled={!canPublish}
+                          data-testid="button-publish-medplum"
+                        >
+                          {canPublish ? "Publish Here" : "Blocked by Safety"}
+                        </Button>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         
         <TabsContent value="apps" className="space-y-4">
           <Card>
@@ -324,7 +432,8 @@ export default function ByodPage() {
         </Button>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
