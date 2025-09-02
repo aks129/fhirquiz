@@ -1,0 +1,360 @@
+{
+  "resourceType": "Bundle",
+  "id": "f1e8d9a7-2c4b-4e6f-8a1d-3b7c9e5f2a8d",
+  "type": "transaction",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:patient-example-1",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-example-1",
+        "identifier": [
+          {
+            "system": "http://hospital.smarthealthit.org",
+            "value": "999-99-9999"
+          }
+        ],
+        "name": [
+          {
+            "given": ["John", "Robert"],
+            "family": "Smith"
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1985-03-15",
+        "address": [
+          {
+            "line": ["123 Main Street"],
+            "city": "Boston",
+            "state": "MA",
+            "postalCode": "02101",
+            "country": "US"
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "555-123-4567",
+            "use": "home"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/patient-example-1"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:encounter-example-1",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "encounter-example-1",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185345009",
+                "display": "Encounter for symptom"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/patient-example-1"
+        },
+        "period": {
+          "start": "2023-01-15T09:00:00Z",
+          "end": "2023-01-15T10:30:00Z"
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "25064002",
+                "display": "Headache"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Encounter/encounter-example-1"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:observation-bp-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "observation-bp-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "85354-9",
+              "display": "Blood pressure panel with all children optional"
+            }
+          ],
+          "text": "Blood pressure systolic & diastolic"
+        },
+        "subject": {
+          "reference": "Patient/patient-example-1"
+        },
+        "encounter": {
+          "reference": "Encounter/encounter-example-1"
+        },
+        "effectiveDateTime": "2023-01-15T09:15:00Z",
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8480-6",
+                  "display": "Systolic blood pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 125,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8462-4",
+                  "display": "Diastolic blood pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 80,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/observation-bp-1"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:observation-weight-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "observation-weight-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "29463-7",
+              "display": "Body Weight"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/patient-example-1"
+        },
+        "encounter": {
+          "reference": "Encounter/encounter-example-1"
+        },
+        "effectiveDateTime": "2023-01-15T09:15:00Z",
+        "valueQuantity": {
+          "value": 75.5,
+          "unit": "kg",
+          "system": "http://unitsofmeasure.org",
+          "code": "kg"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/observation-weight-1"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:condition-diabetes-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "condition-diabetes-1",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "encounter-diagnosis",
+                "display": "Encounter Diagnosis"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "44054006",
+              "display": "Diabetes mellitus type 2"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/patient-example-1"
+        },
+        "encounter": {
+          "reference": "Encounter/encounter-example-1"
+        },
+        "onsetDate": "2022-06-01"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Condition/condition-diabetes-1"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:organization-hospital-1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "organization-hospital-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1234567890"
+          }
+        ],
+        "active": true,
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+                "code": "prov",
+                "display": "Healthcare Provider"
+              }
+            ]
+          }
+        ],
+        "name": "Example General Hospital",
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "555-555-1000"
+          }
+        ],
+        "address": [
+          {
+            "line": ["456 Healthcare Drive"],
+            "city": "Boston",
+            "state": "MA",
+            "postalCode": "02101",
+            "country": "US"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Organization/organization-hospital-1"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:practitioner-doctor-1",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "practitioner-doctor-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "9876543210"
+          }
+        ],
+        "active": true,
+        "name": [
+          {
+            "given": ["Sarah"],
+            "family": "Johnson",
+            "prefix": ["Dr."]
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "555-555-1001"
+          }
+        ],
+        "qualification": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0360",
+                  "code": "MD",
+                  "display": "Doctor of Medicine"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Practitioner/practitioner-doctor-1"
+      }
+    }
+  ]
+}

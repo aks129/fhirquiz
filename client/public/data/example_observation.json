@@ -1,0 +1,105 @@
+{
+  "resourceType": "Observation",
+  "id": "risk-assessment-example",
+  "status": "final",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+          "code": "survey",
+          "display": "Survey"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "72133-2",
+        "display": "Risk assessment score"
+      }
+    ],
+    "text": "Patient Risk Assessment Score"
+  },
+  "subject": {
+    "reference": "Patient/patient-example-1",
+    "display": "John Robert Smith"
+  },
+  "encounter": {
+    "reference": "Encounter/encounter-example-1"
+  },
+  "effectiveDateTime": "2023-01-15T10:00:00Z",
+  "valueQuantity": {
+    "value": 75,
+    "unit": "score",
+    "system": "http://unitsofmeasure.org",
+    "code": "{score}"
+  },
+  "interpretation": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+          "code": "H",
+          "display": "High"
+        }
+      ],
+      "text": "High risk for readmission"
+    }
+  ],
+  "note": [
+    {
+      "text": "Risk assessment calculated based on patient demographics, current conditions (diabetes mellitus type 2), vital signs, and encounter history. Score indicates elevated risk for 30-day readmission."
+    }
+  ],
+  "component": [
+    {
+      "code": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "75491-0",
+            "display": "Risk category"
+          }
+        ]
+      },
+      "valueCodeableConcept": {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/risk-probability",
+            "code": "high",
+            "display": "High risk"
+          }
+        ]
+      }
+    },
+    {
+      "code": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "89247-1",
+            "display": "Risk factor"
+          }
+        ]
+      },
+      "valueString": "Diabetes mellitus type 2, elevated BMI"
+    }
+  ],
+  "derivedFrom": [
+    {
+      "reference": "Observation/observation-bp-1",
+      "display": "Blood pressure measurement"
+    },
+    {
+      "reference": "Observation/observation-weight-1", 
+      "display": "Body weight measurement"
+    },
+    {
+      "reference": "Condition/condition-diabetes-1",
+      "display": "Diabetes mellitus type 2"
+    }
+  ]
+}
