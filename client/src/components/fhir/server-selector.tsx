@@ -29,7 +29,9 @@ export default function ServerSelector({ onServerChange }: ServerSelectorProps) 
   const selectedServer = servers.find((s: FhirServer) => s.id === selectedServerId);
 
   useEffect(() => {
+    console.log('ServerSelector selectedServer changed:', selectedServer);
     if (selectedServer && onServerChange) {
+      console.log('Calling onServerChange with:', selectedServer);
       onServerChange(selectedServer);
     }
   }, [selectedServer, onServerChange]);

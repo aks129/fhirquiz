@@ -18,6 +18,9 @@ export default function BundleUploader({ fhirServerUrl, onUploadSuccess }: Bundl
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  // Debug: Log the fhirServerUrl prop
+  console.log('BundleUploader fhirServerUrl:', fhirServerUrl);
+
   const uploadMutation = useMutation({
     mutationFn: async ({ bundle, fileName }: { bundle: any; fileName: string }) => {
       if (!fhirServerUrl) {

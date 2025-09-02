@@ -28,11 +28,21 @@ export default function Day1Lab() {
 
   useEffect(() => {
     const selectedServerId = getSelectedServer();
-    if (selectedServerId) {
+    if (selectedServerId && servers.length > 0) {
       const server = servers.find((s: FhirServer) => s.id === selectedServerId);
-      setSelectedServerState(server);
+      if (server) {
+        setSelectedServerState(server);
+      }
     }
   }, [servers]);
+
+  // Debug: Log the selected server state
+  console.log('Day1Lab selectedServer:', selectedServer);
+
+  const handleServerChange = (server: any) => {
+    console.log('Day1Lab handleServerChange called with:', server);
+    setSelectedServerState(server);
+  };
 
   const isStepCompleted = (stepName: string) => {
     return progress.some((p: LabProgress) => p.stepName === stepName && p.completed && p.labDay === 1);
@@ -112,7 +122,7 @@ export default function Day1Lab() {
         description="Select a public FHIR test server for safe experimentation with synthetic data."
         status={serverSetupCompleted ? "complete" : selectedServer ? "in-progress" : "pending"}
       >
-        <ServerSelector onServerChange={setSelectedServerState} />
+        <ServerSelector onServerChange={handleServerChange} />
       </LabStep>
 
       {/* Step 2: Bundle Upload */}
