@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -6,6 +6,10 @@ import { Input } from "@/components/ui/input";
 import { uploadBundle } from "@/lib/fhir";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+// Cache for preloaded Synthea data
+let preloadedSyntheaData: any = null;
+let isPreloading = false;
 
 interface BundleUploaderProps {
   fhirServerUrl?: string;
@@ -20,6 +24,27 @@ export default function BundleUploader({ fhirServerUrl, onUploadSuccess }: Bundl
 
   // Debug: Log the fhirServerUrl prop
   console.log('BundleUploader fhirServerUrl:', fhirServerUrl);
+
+  // Preload Synthea data when component mounts
+  useEffect(() => {
+    const preloadSyntheaData = async () => {
+      if (preloadedSyntheaData || isPreloading) return;
+      
+      isPreloading = true;
+      try {
+        console.log('🔄 Preloading Synthea data...');
+        const response = await fetch("/data/synthea_patient_small.json");
+        preloadedSyntheaData = await response.json();
+        console.log('✅ Synthea data preloaded successfully');
+      } catch (error) {
+        console.error('❌ Failed to preload Synthea data:', error);
+      } finally {
+        isPreloading = false;
+      }
+    };
+
+    preloadSyntheaData();
+  }, []);
 
   const uploadMutation = useMutation({
     mutationFn: async ({ bundle, fileName }: { bundle: any; fileName: string }) => {
@@ -102,8 +127,19 @@ export default function BundleUploader({ fhirServerUrl, onUploadSuccess }: Bundl
 
   const handleLoadSampleData = async () => {
     try {
-      const response = await fetch("/data/synthea_patient_small.json");
-      const bundle = await response.json();
+      let bundle;
+      
+      if (preloadedSyntheaData) {
+        // Use preloaded data for instant loading
+        console.log('📦 Using preloaded Synthea data');
+        bundle = preloadedSyntheaData;
+      } else {
+        // Fallback to fetch if preloading failed
+        console.log('🔄 Fetching Synthea data (preload not available)');
+        const response = await fetch("/data/synthea_patient_small.json");
+        bundle = await response.json();
+      }
+      
       uploadMutation.mutate({ bundle, fileName: "synthea_patient_small.json" });
     } catch (error) {
       toast({
@@ -153,7 +189,19 @@ export default function BundleUploader({ fhirServerUrl, onUploadSuccess }: Bundl
             data-testid="button-load-sample"
             title={!fhirServerUrl ? "Please select and test a FHIR server connection first" : "Load sample Synthea data"}
           >
-            Load Sample
+            {preloadedSyntheaData ? (
+              <>
+                <i className="fas fa-bolt mr-2 text-green-600"></i>
+                Load Sample (Ready)
+              </>
+            ) : isPreloading ? (
+              <>
+                <i className="fas fa-spinner fa-spin mr-2"></i>
+                Loading...
+              </>
+            ) : (
+              "Load Sample"
+            )}
             {!fhirServerUrl && <span className="ml-1 text-xs">(Server needed)</span>}
           </Button>
         </div>
