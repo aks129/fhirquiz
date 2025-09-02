@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { FhirServer } from "@/types/api";
 import { testFhirServer } from "@/lib/fhir";
 import { getSelectedServer, setSelectedServer } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface ServerSelectorProps {
   onServerChange?: (server: any) => void;
@@ -21,9 +24,41 @@ export default function ServerSelector({ onServerChange }: ServerSelectorProps) 
   const [showCustom, setShowCustom] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionResult, setConnectionResult] = useState<any>(null);
+  const [useLocalFhir, setUseLocalFhir] = useState(() => 
+    localStorage.getItem('useLocalFhir') === 'true'
+  );
 
   const { data: servers = [] } = useQuery<FhirServer[]>({
     queryKey: ["/api/fhir/servers"],
+  });
+
+  // Query for FHIR base URL status
+  const { data: fhirConfig } = useQuery({
+    queryKey: ["/ops/fhir-base"],
+    refetchInterval: 5000, // Update every 5 seconds
+  });
+
+  // Mutation to toggle local FHIR usage
+  const localFhirMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      return apiRequest('/ops/use-local-fhir', {
+        method: 'POST',
+        body: { enabled }
+      });
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "FHIR Server Updated",
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update FHIR server preference",
+        variant: "destructive",
+      });
+    }
   });
 
   const selectedServer = servers.find((s: FhirServer) => s.id === selectedServerId);
@@ -35,6 +70,12 @@ export default function ServerSelector({ onServerChange }: ServerSelectorProps) 
       onServerChange(selectedServer);
     }
   }, [selectedServer, onServerChange]);
+
+  const handleLocalFhirToggle = (enabled: boolean) => {
+    setUseLocalFhir(enabled);
+    localStorage.setItem('useLocalFhir', enabled.toString());
+    localFhirMutation.mutate(enabled);
+  };
 
   const handleServerChange = (value: string) => {
     if (value === "custom") {
@@ -49,9 +90,18 @@ export default function ServerSelector({ onServerChange }: ServerSelectorProps) 
   };
 
   const handleTestConnection = async () => {
-    const serverUrl = showCustom ? customUrl : selectedServer?.baseUrl;
+    let serverUrl: string;
     
-    if (!serverUrl) {
+    if (useLocalFhir || fhirConfig?.useLocalFhir) {
+      // Use local FHIR server
+      serverUrl = fhirConfig?.localFhirUrl || 'http://localhost:8080/fhir';
+    } else if (showCustom) {
+      // Use custom URL
+      serverUrl = customUrl;
+    } else if (selectedServer) {
+      // Use selected server
+      serverUrl = selectedServer.baseUrl;
+    } else {
       toast({
         title: "Error",
         description: "Please select a server or enter a custom URL",
@@ -115,15 +165,64 @@ export default function ServerSelector({ onServerChange }: ServerSelectorProps) 
     }
   };
 
+  // Get active server info for display
+  const getActiveServerInfo = () => {
+    if (fhirConfig?.useLocalFhir) {
+      return {
+        name: "Local HAPI",
+        url: fhirConfig.localFhirUrl,
+        isLocal: true
+      };
+    }
+    if (selectedServer) {
+      return {
+        name: selectedServer.name,
+        url: selectedServer.baseUrl,
+        isLocal: false
+      };
+    }
+    return {
+      name: "Public HAPI",
+      url: fhirConfig?.fallbackUrl || "https://hapi.fhir.org/baseR4",
+      isLocal: false
+    };
+  };
+
+  const activeServer = getActiveServerInfo();
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <i className="fas fa-server text-primary"></i>
-          <span>FHIR Server Configuration</span>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <i className="fas fa-server text-primary"></i>
+            <span>FHIR Server Configuration</span>
+          </div>
+          <Badge variant={activeServer.isLocal ? "default" : "secondary"}>
+            Active: {activeServer.name}
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        
+        {/* Local FHIR Toggle */}
+        <div className="flex items-center justify-between p-3 border rounded-lg">
+          <div className="space-y-1">
+            <Label htmlFor="local-fhir-toggle" className="font-medium">
+              Use Local FHIR (Docker)
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Override server selection with local HAPI instance
+            </p>
+          </div>
+          <Switch
+            id="local-fhir-toggle"
+            checked={useLocalFhir}
+            onCheckedChange={handleLocalFhirToggle}
+            disabled={localFhirMutation.isPending}
+            data-testid="switch-local-fhir"
+          />
+        </div>
         <div>
           <Label htmlFor="server-select">Select FHIR Server</Label>
           <Select value={selectedServerId} onValueChange={handleServerChange}>
@@ -154,43 +253,56 @@ export default function ServerSelector({ onServerChange }: ServerSelectorProps) 
           </div>
         )}
 
-        {(selectedServer || customUrl) && (
-          <div className="space-y-3">
-            <Button 
-              onClick={handleTestConnection}
-              disabled={isTestingConnection}
-              className="w-full"
-              data-testid="button-test-connection"
-            >
-              <i className="fas fa-satellite-dish mr-2"></i>
-              {isTestingConnection ? "Testing Connection..." : "Test Connection"}
-            </Button>
+        {/* Test Connection Button - Always visible */}
+        <div className="space-y-3">
+          <Button 
+            onClick={handleTestConnection}
+            disabled={isTestingConnection}
+            className="w-full"
+            data-testid="button-test-connection"
+          >
+            <i className="fas fa-satellite-dish mr-2"></i>
+            {isTestingConnection ? "Testing Connection..." : "Test Connection"}
+          </Button>
 
-            {connectionResult && (
-              <div className={`p-3 rounded-lg border ${
-                connectionResult.success 
-                  ? "bg-green-50 border-green-200 text-green-700"
-                  : "bg-red-50 border-red-200 text-red-700"
-              }`}>
-                <div className="flex items-center space-x-2">
-                  <i className={`fas ${connectionResult.success ? "fa-check-circle" : "fa-times-circle"}`}></i>
-                  <span className="font-medium">
-                    {connectionResult.success ? "Connection Successful" : "Connection Failed"}
-                  </span>
-                </div>
-                {connectionResult.success && (
-                  <div className="mt-2 text-sm">
-                    <div>FHIR Version: {connectionResult.fhirVersion}</div>
-                    <div>Response Time: {connectionResult.responseTime}ms</div>
-                  </div>
-                )}
-                {connectionResult.error && (
-                  <div className="mt-2 text-sm">{connectionResult.error}</div>
-                )}
+          {connectionResult && (
+            <div className={`p-3 rounded-lg border ${
+              connectionResult.success 
+                ? "bg-green-50 border-green-200 text-green-700"
+                : "bg-red-50 border-red-200 text-red-700"
+            }`}>
+              <div className="flex items-center space-x-2">
+                <i className={`fas ${connectionResult.success ? "fa-check-circle" : "fa-times-circle"}`}></i>
+                <span className="font-medium">
+                  {connectionResult.success ? "Connection Successful" : "Connection Failed"}
+                </span>
               </div>
-            )}
+              {connectionResult.success && (
+                <div className="mt-2 text-sm">
+                  <div>FHIR Version: {connectionResult.fhirVersion}</div>
+                  <div>Response Time: {connectionResult.responseTime}ms</div>
+                </div>
+              )}
+              {connectionResult.error && (
+                <div className="mt-2 text-sm">{connectionResult.error}</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Local FHIR Info Box */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="flex items-start space-x-2">
+            <i className="fas fa-info-circle text-blue-600 mt-0.5"></i>
+            <div>
+              <p className="text-sm text-blue-700 font-medium">Local FHIR Server</p>
+              <p className="text-xs text-blue-600">
+                Local endpoint is http://localhost:8080/fhir. Run <code className="bg-blue-100 px-1 rounded">make up</code> to start Docker. 
+                Public endpoints remain available if local is off.
+              </p>
+            </div>
           </div>
-        )}
+        </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
           <div className="flex items-start space-x-2">

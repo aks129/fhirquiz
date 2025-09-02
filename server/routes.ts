@@ -766,6 +766,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Set local FHIR usage preference
+  app.post("/ops/use-local-fhir", async (req, res) => {
+    try {
+      const { enabled } = req.body;
+      
+      // Update environment variable for current session
+      process.env.USE_LOCAL_FHIR = enabled ? 'true' : 'false';
+      
+      const activeBaseUrl = getCurrentFhirBaseUrl();
+      
+      res.json({
+        success: true,
+        useLocalFhir: enabled,
+        activeBaseUrl,
+        message: enabled ? "Switched to local FHIR server" : "Switched to public FHIR servers"
+      });
+    } catch (error) {
+      console.error("Error setting local FHIR preference:", error);
+      res.status(500).json({ error: "Failed to set local FHIR preference" });
+    }
+  });
+
   // Seed local HAPI FHIR server endpoint
   app.get("/ops/seed-local-fhir", async (req, res) => {
     try {
