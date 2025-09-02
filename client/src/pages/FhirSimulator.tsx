@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Play, Save, Trash2, Clock, Download, Upload, FileText, ArrowDown, Settings, ChevronRight, ChevronLeft, Database, Search } from "lucide-react";
+import { Play, Save, Trash2, Clock, Download, Upload, FileText, ArrowDown, Settings, ChevronRight, ChevronLeft, Database, Search, Plus, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getSelectedServer } from "@/lib/storage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -180,6 +181,16 @@ export default function FhirSimulator() {
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
   const [resourceData, setResourceData] = useState<any>(null);
   const [resourceLoading, setResourceLoading] = useState(false);
+  const [showSearchBuilder, setShowSearchBuilder] = useState(false);
+  const [searchBuilder, setSearchBuilder] = useState({
+    resourceType: '',
+    searchRows: [{ parameter: '', operator: '=', value: '' }],
+    count: '',
+    sort: '',
+    include: '',
+    revinclude: '',
+    summary: ''
+  });
 
   // Load persisted data and handle prefill on component mount
   useEffect(() => {
@@ -425,6 +436,101 @@ export default function FhirSimulator() {
     setShowCapabilities(false); // Close capabilities panel
   };
 
+  // Search Builder functions
+  const getResourceSearchParameters = (resourceType: string): string[] => {
+    if (!capabilityStatement?.rest?.[0]?.resource) return [];
+    
+    const resource = capabilityStatement.rest[0].resource.find((r: any) => r.type === resourceType);
+    if (!resource?.searchParam) return [];
+    
+    return resource.searchParam.map((param: any) => param.name);
+  };
+
+  const getAllSearchParameters = (): string[] => {
+    const commonParams = ['_id', '_lastUpdated', '_profile', '_security', '_source', '_tag'];
+    const resourceParams = getResourceSearchParameters(searchBuilder.resourceType);
+    return [...commonParams, ...resourceParams].sort();
+  };
+
+  const buildQueryString = () => {
+    const params: Record<string, string> = {};
+    
+    // Add search rows
+    searchBuilder.searchRows.forEach(row => {
+      if (row.parameter && row.value) {
+        const paramName = row.operator !== '=' ? `${row.parameter}${row.operator}` : row.parameter;
+        params[paramName] = row.value;
+      }
+    });
+    
+    // Add special FHIR parameters
+    if (searchBuilder.count) params['_count'] = searchBuilder.count;
+    if (searchBuilder.sort) params['_sort'] = searchBuilder.sort;
+    if (searchBuilder.include) params['_include'] = searchBuilder.include;
+    if (searchBuilder.revinclude) params['_revinclude'] = searchBuilder.revinclude;
+    if (searchBuilder.summary) params['_summary'] = searchBuilder.summary;
+    
+    return params;
+  };
+
+  const getPreviewUrl = () => {
+    const queryParams = buildQueryString();
+    const baseUrl = (fhirConfig && typeof fhirConfig === 'object' && 'useLocalFhir' in fhirConfig && fhirConfig.useLocalFhir) ? 'http://localhost:8080/fhir' : 'https://hapi.fhir.org/baseR4';
+    const path = `/${searchBuilder.resourceType}`;
+    const query = Object.entries(queryParams).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+    return `${baseUrl}${path}${query ? `?${query}` : ''}`;
+  };
+
+  const addSearchRow = () => {
+    setSearchBuilder(prev => ({
+      ...prev,
+      searchRows: [...prev.searchRows, { parameter: '', operator: '=', value: '' }]
+    }));
+  };
+
+  const removeSearchRow = (index: number) => {
+    setSearchBuilder(prev => ({
+      ...prev,
+      searchRows: prev.searchRows.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateSearchRow = (index: number, field: string, value: string) => {
+    setSearchBuilder(prev => ({
+      ...prev,
+      searchRows: prev.searchRows.map((row, i) => 
+        i === index ? { ...row, [field]: value } : row
+      )
+    }));
+  };
+
+  const insertSearchIntoBuilder = () => {
+    const queryParams = buildQueryString();
+    const path = `/${searchBuilder.resourceType}`;
+    
+    setRequest({
+      method: 'GET',
+      path,
+      queryParams,
+      headers: { "Accept": "application/fhir+json" },
+      bodyType: 'json'
+    });
+    
+    setShowSearchBuilder(false);
+  };
+
+  const resetSearchBuilder = () => {
+    setSearchBuilder({
+      resourceType: '',
+      searchRows: [{ parameter: '', operator: '=', value: '' }],
+      count: '',
+      sort: '',
+      include: '',
+      revinclude: '',
+      summary: ''
+    });
+  };
+
   // Fetch history
   const { data: history = [] } = useQuery<HistoryEntry[]>({
     queryKey: ["/sim/history"],
@@ -625,7 +731,7 @@ export default function FhirSimulator() {
               {fhirConfig && (
                 <div className="mt-2">
                   <Badge variant="outline" className="text-sm">
-                    Connected to: {(fhirConfig as any)?.useLocalFhir ? 'Local HAPI' : 'Public HAPI'}
+                    Connected to: {fhirConfig && typeof fhirConfig === 'object' && 'useLocalFhir' in fhirConfig && fhirConfig.useLocalFhir ? 'Local HAPI' : 'Public HAPI'}
                   </Badge>
                 </div>
               )}
@@ -1142,6 +1248,17 @@ export default function FhirSimulator() {
                     <FileText className="h-4 w-4 mr-2" />
                     Copy as cURL
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (!capabilityStatement) fetchCapabilities();
+                      setShowSearchBuilder(true);
+                    }}
+                    data-testid="search-builder-button"
+                  >
+                    <Search className="h-4 w-4 mr-2" />
+                    Search Builder
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -1501,6 +1618,217 @@ export default function FhirSimulator() {
           )}
         </div>
       </div>
+
+      {/* Search Builder Modal */}
+      <Dialog open={showSearchBuilder} onOpenChange={setShowSearchBuilder}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>FHIR Search Builder</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Resource Type Selection */}
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Resource Type</Label>
+              <Select
+                value={searchBuilder.resourceType}
+                onValueChange={(value) => setSearchBuilder(prev => ({ ...prev, resourceType: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a resource type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getSupportedResources().map(resource => (
+                    <SelectItem key={resource.type} value={resource.type}>
+                      {resource.type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Search Parameters */}
+            {searchBuilder.resourceType && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="text-sm font-medium">Search Parameters</Label>
+                  <Button size="sm" variant="outline" onClick={addSearchRow}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Row
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  {searchBuilder.searchRows.map((row, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      {/* Parameter Name */}
+                      <div className="flex-1">
+                        <Select
+                          value={row.parameter}
+                          onValueChange={(value) => updateSearchRow(index, 'parameter', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Parameter" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getAllSearchParameters().map(param => (
+                              <SelectItem key={param} value={param}>
+                                {param}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Operator */}
+                      <div className="w-32">
+                        <Select
+                          value={row.operator}
+                          onValueChange={(value) => updateSearchRow(index, 'operator', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="=">=</SelectItem>
+                            <SelectItem value=":contains">:contains</SelectItem>
+                            <SelectItem value=":exact">:exact</SelectItem>
+                            <SelectItem value=":missing">:missing</SelectItem>
+                            <SelectItem value=":not">:not</SelectItem>
+                            <SelectItem value=":text">:text</SelectItem>
+                            <SelectItem value=":of-type">:of-type</SelectItem>
+                            <SelectItem value=":below">:below</SelectItem>
+                            <SelectItem value=":above">:above</SelectItem>
+                            <SelectItem value=":in">:in</SelectItem>
+                            <SelectItem value=":not-in">:not-in</SelectItem>
+                            <SelectItem value="ge">ge (≥)</SelectItem>
+                            <SelectItem value="le">le (≤)</SelectItem>
+                            <SelectItem value="gt">gt (&gt;)</SelectItem>
+                            <SelectItem value="lt">lt (&lt;)</SelectItem>
+                            <SelectItem value="ne">ne (≠)</SelectItem>
+                            <SelectItem value="sa">sa (starts after)</SelectItem>
+                            <SelectItem value="eb">eb (ends before)</SelectItem>
+                            <SelectItem value="ap">ap (approximately)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Value */}
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Value"
+                          value={row.value}
+                          onChange={(e) => updateSearchRow(index, 'value', e.target.value)}
+                        />
+                      </div>
+
+                      {/* Remove button */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => removeSearchRow(index)}
+                        disabled={searchBuilder.searchRows.length === 1}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Special FHIR Parameters */}
+            {searchBuilder.resourceType && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">_count</Label>
+                  <Input
+                    placeholder="e.g. 10, 50"
+                    value={searchBuilder.count}
+                    onChange={(e) => setSearchBuilder(prev => ({ ...prev, count: e.target.value }))}
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">_sort</Label>
+                  <Input
+                    placeholder="e.g. _lastUpdated, name"
+                    value={searchBuilder.sort}
+                    onChange={(e) => setSearchBuilder(prev => ({ ...prev, sort: e.target.value }))}
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">_include</Label>
+                  <Input
+                    placeholder="e.g. Patient:organization"
+                    value={searchBuilder.include}
+                    onChange={(e) => setSearchBuilder(prev => ({ ...prev, include: e.target.value }))}
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">_revinclude</Label>
+                  <Input
+                    placeholder="e.g. Observation:patient"
+                    value={searchBuilder.revinclude}
+                    onChange={(e) => setSearchBuilder(prev => ({ ...prev, revinclude: e.target.value }))}
+                  />
+                </div>
+                
+                <div className="col-span-2">
+                  <Label className="text-sm font-medium mb-2 block">_summary</Label>
+                  <Select
+                    value={searchBuilder.summary}
+                    onValueChange={(value) => setSearchBuilder(prev => ({ ...prev, summary: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select summary mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="true">true</SelectItem>
+                      <SelectItem value="text">text</SelectItem>
+                      <SelectItem value="data">data</SelectItem>
+                      <SelectItem value="count">count</SelectItem>
+                      <SelectItem value="false">false</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {/* URL Preview */}
+            {searchBuilder.resourceType && (
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Preview URL</Label>
+                <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+                  <code className="text-sm break-all">{getPreviewUrl()}</code>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={resetSearchBuilder}>
+                Reset
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowSearchBuilder(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={insertSearchIntoBuilder}
+                  disabled={!searchBuilder.resourceType}
+                  data-testid="insert-search"
+                >
+                  Insert into Request Builder
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
