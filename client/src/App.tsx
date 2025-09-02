@@ -29,6 +29,8 @@ import BillingCancel from "@/pages/BillingCancel";
 import Rewards from "@/pages/rewards";
 import Profile from "@/pages/profile";
 import Auth from "@/pages/auth";
+import Portal from "@/pages/Portal";
+import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import NavigationHeader from "@/components/layout/navigation-header";
 import SidebarNavigation from "@/components/layout/sidebar-navigation";
 import MarketingHeader from "@/components/layout/marketing-header";
@@ -45,16 +47,10 @@ function Router() {
   
   // Handle portal routing
   const isPortalPath = location === "/portal";
-  if (isPortalPath) {
-    if (user) {
-      // Redirect authenticated users to overview
-      window.location.href = "/overview";
-      return null;
-    } else {
-      // Redirect unauthenticated users to auth
-      window.location.href = "/auth";
-      return null;
-    }
+  if (isPortalPath && !user) {
+    // Redirect unauthenticated users to auth
+    window.location.href = "/auth";
+    return null;
   }
 
   // Marketing mode layout
@@ -77,6 +73,29 @@ function Router() {
     );
   }
 
+  // Check if we're in portal mode (new authenticated dashboard)
+  const portalPaths = ["/portal", "/bootcamp", "/byod", "/gallery", "/rewards", "/billing", "/profile", "/help"];
+  const isPortalMode = portalPaths.some(path => location.startsWith(path));
+
+  if (isPortalMode && user) {
+    return (
+      <AuthenticatedLayout>
+        <Switch>
+          <Route path="/portal" component={Portal} />
+          <Route path="/bootcamp" component={Overview} />
+          <Route path="/byod" component={ByodPage} />
+          <Route path="/gallery" component={ResultsGallery} />
+          <Route path="/rewards" component={Rewards} />
+          <Route path="/billing/success" component={BillingSuccess} />
+          <Route path="/billing/cancel" component={BillingCancel} />
+          <Route path="/profile" component={Profile} />
+          <Route path="/help" component={() => <div className="p-6"><h1>Help & Support</h1><p>Coming soon...</p></div>} />
+          <Route component={NotFound} />
+        </Switch>
+      </AuthenticatedLayout>
+    );
+  }
+
   // App mode layout (authenticated or app paths)
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
@@ -95,19 +114,13 @@ function Router() {
             <Route path="/quiz/day2" component={QuizDay2} />
             <Route path="/quiz/day3" component={QuizDay3} />
             <Route path="/quiz/fhir" component={QuizFhir} />
-            <Route path="/byod" component={ByodPage} />
             <Route path="/mini-app/:id" component={MiniAppPage} />
             <Route path="/demo" component={DemoPage} />
             <Route path="/resources" component={Resources} />
-            <Route path="/gallery" component={ResultsGallery} />
             <Route path="/troubleshooting" component={Troubleshooting} />
             <Route path="/admin" component={AdminDashboard} />
             <Route path="/instructor" component={InstructorDashboard} />
             <Route path="/catalog" component={Catalog} />
-            <Route path="/rewards" component={Rewards} />
-            <Route path="/profile" component={Profile} />
-            <Route path="/billing/success" component={BillingSuccess} />
-            <Route path="/billing/cancel" component={BillingCancel} />
             <Route path="/auth" component={Auth} />
             <Route component={NotFound} />
           </Switch>
