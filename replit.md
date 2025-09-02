@@ -67,4 +67,17 @@ A sophisticated progress tracking system monitors completion of lab steps across
 - **connect-pg-simple**: PostgreSQL session store for Express sessions
 - **drizzle-kit**: Database migration and introspection tools
 
+## Recent Changes
+
+### Instructor Mode Implementation
+- **INSTRUCTOR_MODE Environment Variable**: When set to `true`, enables advanced classroom management features
+- **Auto-Local FHIR Default**: In instructor mode, automatically defaults to local FHIR server unless explicitly overridden via API
+- **Class Reset Endpoint**: POST `/ops/reset-class` allows instructors to clear artifacts and optionally wipe local HAPI data
+- **Safety Controls**: Reset endpoint only available in instructor mode with prominent warnings for destructive operations
+
+### Backend Testing Suite
+- **Comprehensive FHIR Tests**: Validates active base URL resolution, health checks, seed operations, and observation POST structure
+- **CI-Compatible**: All tests mock network calls to ensure reliable execution without external dependencies
+- **Mock-Based Testing**: Uses Vitest with proper mocking for FHIR server interactions
+
 The application architecture emphasizes educational value while maintaining professional development practices, making it suitable for both learning FHIR concepts and understanding modern full-stack development patterns.

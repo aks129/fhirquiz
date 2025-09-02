@@ -33,6 +33,37 @@ This is a full-stack educational application designed to teach healthcare intero
 
 This application is designed for educational purposes using synthetic patient data from Synthea. Always use synthetic/test data when working with public or shared FHIR servers.
 
+## Instructor Mode
+
+Enable instructor mode for advanced classroom management features:
+
+```bash
+INSTRUCTOR_MODE=true npm run dev
+```
+
+### Instructor Features
+
+- **Auto-Local FHIR**: Automatically defaults to local FHIR server unless explicitly overridden
+- **Class Reset**: Reset all class artifacts and optionally wipe local HAPI data
+
+#### Reset Class Operation
+
+**⚠️ Instructor Mode Only**: Clear class artifacts to prepare for new sessions.
+
+```bash
+# Clear artifacts only (safe)
+curl -X POST http://localhost:5000/ops/reset-class \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# DANGEROUS: Clear artifacts AND wipe all FHIR data
+curl -X POST http://localhost:5000/ops/reset-class \
+  -H "Content-Type: application/json" \
+  -d '{"confirm": true}'
+```
+
+**⚠️ WARNING**: Setting `confirm: true` completely wipes the local HAPI FHIR database. All patient data, observations, and resources will be permanently deleted. Use only when starting fresh classes.
+
 ## Development
 
 The application uses synthetic patient data for all exercises and demonstrations, ensuring HIPAA compliance and data privacy.

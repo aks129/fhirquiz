@@ -1,0 +1,113 @@
+You are the lead QA engineer. Implement a full QA suite (automated + manual artifacts) for the bootcamp web app described below. The goal is to validate the end-to-end flows and guardrails, catch regressions, and produce useful reports for instructors.
+
+Scope (must cover):
+
+FHIR server flows: Server selector (public vs local), /fhir/ping, /fhir/capabilities, transaction bundle load with sequential fallback, CSV export, transforms run, publish Observation, capability checks, error handling (401/403, R4 vs R5, rate limits).
+
+Quizzes: Day1/Day2/Day3/fhir-basics banks; pass gates (≥80% unlock), challenge mode timer/shuffle, results storage.
+
+BYOD: Apple Health (XML/ZiP), Google Fit (CSV), Fitbit (JSON), Garmin (CSV) import → normalized preview → map-to-FHIR → batch publish with per-row status → artifacts ZIP; safety mode (block public publish unless explicit consent); local-preferred behavior.
+
+Mini-App Builder: Generate “My Health Mini-App,” charts, derived score, pulls Observations via backend proxy, optional re-publish derived score.
+
+Local HAPI (Docker): Toggle “Use Local FHIR,” healthcheck, auto-seed endpoint, idempotent seeding, readiness wait, instructor reset.
+
+Results Gallery: Screenshot uploads, attempt history, BYOD badge, artifact ZIPs (including demo script markdown).
+
+Instructor Mode: Quiz editor, server list editor, class reset, default to local when enabled.
+
+Non-functional: Accessibility (a11y), basic security/input validations, performance sanity, and clean error messaging.
+
+Deliverables to create:
+
+A. Automated tests
+
+Backend (pytest): Under apps/backend/tests/ create unit + integration tests for:
+
+Active base URL resolution (local vs public), /ops/use-local-fhir, /ops/check-local-fhir, /ops/seed-local-fhir (idempotent), /ops/reset-class (instructor only).
+
+/fhir/ping, /fhir/capabilities (mock and real, when local HAPI is available).
+
+/fhir/load-bundle (transaction success; transaction fail → sequential fallback), /fhir/stats, /export/flat.
+
+/transforms/run (staging tables created; readmission_30d + toy risk score created with deterministic sample).
+
+/fhir/publish/observation (required fields; subject reference; category; valueQuantity; encounter optional).
+
+BYOD endpoints: import/* parsers (Apple Health small XML, Google Fit CSV, Fitbit JSON, Garmin CSV), preview, map-to-fhir, publish (batch with partial failures + retry; per-row status).
+
+Validation of no PHI hints in public mode (e.g., banner present via config).
+
+Create fixtures in tests/fixtures/ with tiny fabricated sample files (Apple Health XML, Google Fit CSV, Fitbit JSON, Garmin CSV) and a 1-patient Synthea bundle. Mock network where Docker is unavailable.
+
+Target coverage ≥80%; fail build if lower.
+
+Frontend (Playwright, TypeScript): Under apps/frontend/tests/ write end-to-end specs for:
+
+Day 1 flow: Select server → test connection → seed local (when local on) → upload Synthea bundle → see counts → export CSVs → micro-quiz → pass gate updates.
+
+Day 2 flow: View/edit transforms → run → preview tables → micro-quiz → pass.
+
+Day 3 flow: Map risk score → publish Observation → link opens resource → micro-quiz → pass.
+
+Quizzes: Full quiz pass/fail paths; 80% gate; challenge mode timer; results visible in Results Gallery.
+
+BYOD wizard: Upload each sample file → preview → mapping presets → publish (local on), safety mode prevents public publish unless consent; BYOD badge unlocks after criteria met; artifacts ZIP downloadable.
+
+Mini-App Builder: Choose 2–3 metrics → generate mini-app → charts render with server data → re-publish derived score works.
+
+Instructor Mode: Toggle on (env) → quiz editor loads/saves JSON, server list edits persist, class reset wipes attempts/artifacts (with confirmation).
+
+A11y smoke: Run axe-core on Overview, Day1/2/3, BYOD, Mini-App pages; no critical violations.
+
+B. Manual QA artifacts
+
+docs/TESTPLAN.md: exhaustive test cases (IDs, steps, expected results) matching all above flows, including negative tests (bad codes, missing patientId, oversized uploads, invalid CSV headers, unsupported server capabilities).
+
+docs/QA_CHECKLIST.md: short checklist for instructors/TAs (pre-class smoke: docker up, seed, quizzes load, BYOD imports, publish works).
+
+docs/TROUBLESHOOTING.md: common issues (8080 port in use, CORS, metadata 404, transaction rejected, CSV delimiter issues, timezones in Apple Health).
+
+docs/SECURITY_NOTES.md: reminders (no PHI on public servers; local-only for sensitive data; file size limits; accepted MIME types).
+
+C. CI/CD
+
+.github/workflows/qa.yml: GitHub Actions workflow that runs:
+
+Service container for HAPI FHIR (R4) on port 8080.
+
+Setup Node + Python; install deps; run backend pytest with coverage; run frontend Playwright tests headless.
+
+Upload test artifacts (coverage reports, Playwright traces/videos, logs, artifacts ZIPs) on failure.
+
+Add Makefile targets: qa (backend + frontend tests), qa-backend, qa-frontend, and qa-smoke.
+
+D. Quality gates
+
+Backend coverage ≥80%; Playwright must pass core e2e (day1.spec.ts, day2.spec.ts, day3.spec.ts, byod.spec.ts).
+
+Lighthouse CI (or Playwright trace step) for performance snapshot on local dev; record LCP/CLS in artifacts/perf.json (no strict budget, just log).
+
+Axe-core: no serious or critical violations on key pages. Fail if found.
+
+Implementation details:
+
+If Docker is unavailable in the environment, auto-fallback: mock FHIR calls with responses (Python) + MSW (frontend). Keep the same test interfaces so CI can run with real HAPI while local dev can use mocks.
+
+Add deterministic seeds for transforms (fixed dates/values) so assertions are stable.
+
+Ensure tests clean up temp data in artifacts/ and byod_artifacts/.
+
+Provide sample commands in README.md (“Run QA locally”, “Run smoke only”, “Re-run a single Playwright spec”).
+
+Reporting:
+
+After tests, generate artifacts/QA_SUMMARY.md with:
+
+Pass/fail counts by suite, coverage %, a11y/perf summaries, and links to failing traces/screenshots.
+
+Top 5 flaky tests (if any) with suggested fixes.
+
+On any failure, print a crisp bug template to console and write to artifacts/BUG_REPORTS/ per defect with repro steps, expected vs actual, logs, and environment info.
+
+Finish by running the full suite (make qa) and updating the README badges (CI, coverage). If failures occur, fix obvious issues (typos, selectors, missing waits) and re-run until green or provide clear failure notes in QA_SUMMARY.md.

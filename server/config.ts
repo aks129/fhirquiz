@@ -3,6 +3,9 @@ import path from 'path';
 
 // Configuration for FHIR server settings
 export const config = {
+  // Instructor mode - enables advanced features and defaults to local FHIR
+  INSTRUCTOR_MODE: process.env.INSTRUCTOR_MODE === 'true',
+  
   // Use local FHIR server instead of public servers
   USE_LOCAL_FHIR: process.env.USE_LOCAL_FHIR === 'true',
   
@@ -18,6 +21,13 @@ const CONFIG_FILE = path.join(process.cwd(), '.local-fhir-config.json');
 
 // Load persisted configuration on startup
 export async function loadPersistedConfig(): Promise<void> {
+  // In instructor mode, default to local FHIR unless explicitly overridden
+  if (config.INSTRUCTOR_MODE && process.env.USE_LOCAL_FHIR === undefined) {
+    config.USE_LOCAL_FHIR = true;
+    process.env.USE_LOCAL_FHIR = 'true';
+    console.log('🎓 Instructor mode: defaulting to local FHIR server');
+  }
+  
   try {
     const configData = await fs.readFile(CONFIG_FILE, 'utf-8');
     const persistedConfig = JSON.parse(configData);
@@ -28,7 +38,8 @@ export async function loadPersistedConfig(): Promise<void> {
     }
   } catch (error) {
     // File doesn't exist or is invalid, use environment defaults
-    console.log('📁 No persisted config found, using environment defaults');
+    const mode = config.INSTRUCTOR_MODE ? ' (instructor mode)' : '';
+    console.log(`📁 No persisted config found, using environment defaults${mode}`);
   }
 }
 

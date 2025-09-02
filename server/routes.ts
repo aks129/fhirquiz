@@ -758,7 +758,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activeBaseUrl: baseUrl,
         useLocalFhir: process.env.USE_LOCAL_FHIR === 'true',
         localFhirUrl: process.env.LOCAL_FHIR_URL || 'http://localhost:8080/fhir',
-        fallbackUrl: process.env.FHIR_BASE_URL || 'https://hapi.fhir.org/baseR4'
+        fallbackUrl: process.env.FHIR_BASE_URL || 'https://hapi.fhir.org/baseR4',
+        instructorMode: config.INSTRUCTOR_MODE
       });
     } catch (error) {
       console.error("Error getting FHIR base URL:", error);
@@ -844,6 +845,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: "Failed to seed local HAPI server",
         details: error instanceof Error ? error.message : "Unknown error",
         tip: "Make sure the local HAPI server is running with 'make up'"
+      });
+    }
+  });
+
+  // Reset class artifacts - Instructor mode only
+  app.post("/ops/reset-class", async (req, res) => {
+    // Check if instructor mode is enabled
+    if (!config.INSTRUCTOR_MODE) {
+      return res.status(403).json({ 
+        error: "Reset class operation is only available in instructor mode",
+        tip: "Set INSTRUCTOR_MODE=true to enable this feature"
+      });
+    }
+
+    try {
+      const { confirm } = req.body;
+      const artifactsCleared = [];
+      const errors = [];
+
+      // Clear local artifacts directories
+      const artifactDirs = ['artifacts', 'byod_artifacts'];
+      
+      for (const dir of artifactDirs) {
+        const dirPath = path.join(process.cwd(), dir);
+        try {
+          // Check if directory exists
+          await fs.access(dirPath);
+          
+          // Remove all files in the directory
+          const files = await fs.readdir(dirPath);
+          for (const file of files) {
+            await fs.unlink(path.join(dirPath, file));
+          }
+          
+          artifactsCleared.push(`${dir}/* (${files.length} files)`);
+        } catch (error) {
+          if ((error as any).code !== 'ENOENT') {
+            errors.push(`Failed to clear ${dir}: ${(error as Error).message}`);
+          }
+        }
+      }
+
+      let hapiDataCleared = false;
+      
+      // Dangerous operation: wipe local HAPI data if explicitly confirmed
+      if (confirm === true) {
+        try {
+          const hapiDataPath = path.join(process.cwd(), 'volumes', 'hapi-data');
+          
+          // Check if the directory exists
+          await fs.access(hapiDataPath);
+          
+          // Remove the entire volumes/hapi-data directory
+          await fs.rm(hapiDataPath, { recursive: true, force: true });
+          
+          // Recreate the directory for Docker volume mounting
+          await fs.mkdir(hapiDataPath, { recursive: true });
+          
+          hapiDataCleared = true;
+        } catch (error) {
+          if ((error as any).code !== 'ENOENT') {
+            errors.push(`Failed to clear HAPI data: ${(error as Error).message}`);
+          }
+        }
+      }
+
+      const response: any = {
+        success: errors.length === 0,
+        artifactsCleared,
+        hapiDataCleared,
+        message: errors.length === 0 
+          ? "Class reset completed successfully" 
+          : "Class reset completed with some errors"
+      };
+
+      if (errors.length > 0) {
+        response.errors = errors;
+      }
+
+      if (hapiDataCleared) {
+        response.warning = "⚠️ Local HAPI FHIR data has been completely wiped. Restart the Docker container to initialize a fresh database.";
+      }
+
+      res.json(response);
+    } catch (error) {
+      console.error("Error during class reset:", error);
+      res.status(500).json({ 
+        error: "Failed to reset class",
+        details: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
