@@ -1110,6 +1110,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Seed demo data (users, purchases, trials, testimonials)
+  app.post("/ops/seed-demo", async (req, res) => {
+    try {
+      const { spawn } = require('child_process');
+      const path = require('path');
+      
+      // Path to the Python seed script
+      const seedScriptPath = path.join(process.cwd(), 'apps/backend/db/seed.py');
+      
+      // Check if the seed script exists
+      try {
+        await fs.access(seedScriptPath);
+      } catch (error) {
+        return res.status(404).json({
+          error: "Seed script not found",
+          details: `Expected script at: ${seedScriptPath}`,
+          tip: "Make sure apps/backend/db/seed.py exists"
+        });
+      }
+
+      // Run the Python seed script with demo flag
+      const pythonProcess = spawn('python3', ['-c', `
+import sys
+import os
+sys.path.append('${process.cwd()}')
+from apps.backend.db.seed import CommerceSeeder
+import asyncio
+import json
+
+async def main():
+    database_url = os.getenv('DATABASE_URL')
+    if not database_url:
+        raise ValueError("DATABASE_URL environment variable is required")
+    
+    stripe_price_ids_json = os.getenv('STRIPE_PRICE_IDS_JSON', '{}')
+    try:
+        stripe_price_ids = json.loads(stripe_price_ids_json)
+    except json.JSONDecodeError:
+        stripe_price_ids = {}
+    
+    seeder = CommerceSeeder(database_url, stripe_price_ids)
+    await seeder.seed_demo_data()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+      `], {
+        env: {
+          ...process.env,
+          DATABASE_URL: process.env.DATABASE_URL,
+          STRIPE_PRICE_IDS_JSON: process.env.STRIPE_PRICE_IDS_JSON || '{}'
+        },
+        cwd: process.cwd()
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0) {
+          res.json({
+            success: true,
+            message: "Demo data seeding completed successfully",
+            details: {
+              usersSeeded: ['Dr. Sarah Chen (instructor)', 'Alex Rivera (student)', 'Jamie Kim (student)', 'Marcus Thompson (student)'],
+              purchasesSeeded: ['Active Basic', 'Trial Plus', 'Active Plus'],
+              testimonialsSeeded: 3,
+              warning: "⚠️ Demo data includes fake user accounts and purchases"
+            },
+            output: stdout
+          });
+        } else {
+          console.error(`Demo seed process exited with code ${code}`);
+          console.error('STDERR:', stderr);
+          res.status(500).json({
+            error: "Demo data seeding failed",
+            exitCode: code,
+            stderr: stderr,
+            stdout: stdout,
+            tip: "Check database connection and ensure Python dependencies are installed"
+          });
+        }
+      });
+
+      pythonProcess.on('error', (error) => {
+        console.error("Error spawning demo seed process:", error);
+        res.status(500).json({
+          error: "Failed to start demo seeding process",
+          details: error.message,
+          tip: "Ensure python3 is installed and accessible"
+        });
+      });
+
+    } catch (error) {
+      console.error("Error in demo data seeding:", error);
+      res.status(500).json({
+        error: "Failed to initialize demo data seeding",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // FHIR Observation endpoint for testing
   app.post("/api/fhir/observations", async (req, res) => {
     try {

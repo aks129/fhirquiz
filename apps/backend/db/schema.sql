@@ -88,6 +88,18 @@ CREATE TABLE IF NOT EXISTS awards (
     UNIQUE(user_id, badge_code)
 );
 
+-- Testimonials table
+CREATE TABLE IF NOT EXISTS testimonials (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name text NOT NULL,
+    role text NOT NULL,
+    content text NOT NULL,
+    rating int CHECK (rating >= 1 AND rating <= 5) DEFAULT 5,
+    image_url text NULL,
+    featured bool DEFAULT false,
+    created_at timestamptz DEFAULT now()
+);
+
 -- Admin bootstrap function
 CREATE OR REPLACE FUNCTION grant_admin(user_email text)
 RETURNS void
