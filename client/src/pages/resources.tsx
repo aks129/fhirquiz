@@ -7,7 +7,7 @@ export default function Resources() {
       id: "7-steps",
       title: "7 Steps to FHIR for Developers",
       description: "The most effective learning path for developers new to FHIR, including hands-on practice with Postman and local server setup.",
-      url: "https://darrendevitt.com/7-steps-to-fhir-for-developers-2/",
+      url: "https://fhiriq.com/7-steps-to-fhir-for-developers-2/",
       category: "Getting Started",
       icon: "fas fa-play",
       bgColor: "bg-blue-100",
@@ -18,7 +18,7 @@ export default function Resources() {
       id: "test-data",
       title: "FHIR Patient Test Data",
       description: "Complete guide to using Synthea-generated synthetic patient data for FHIR development and testing.",
-      url: "https://darrendevitt.com/fhir-test-data-from-synthea/",
+      url: "https://fhiriq.com/fhir-test-data-from-synthea/",
       category: "Test Data",
       icon: "fas fa-database",
       bgColor: "bg-green-100",
@@ -29,7 +29,7 @@ export default function Resources() {
       id: "transaction-bundles",
       title: "Transaction Bundles Tutorial",
       description: "Master FHIR transaction bundles for updating or creating multiple resources with complete success or failure.",
-      url: "https://darrendevitt.com/a-tutorial-on-fhir-transaction-bundles/",
+      url: "https://fhiriq.com/a-tutorial-on-fhir-transaction-bundles/",
       category: "Advanced",
       icon: "fas fa-code",
       bgColor: "bg-orange-100",
@@ -40,7 +40,7 @@ export default function Resources() {
       id: "beyond-basics",
       title: "FHIR: Beyond the Basics",
       description: "Seven FHIR concepts that beginners may not be familiar with, including pagination, batch bundles, and resource versioning.",
-      url: "https://darrendevitt.com/fhir-beyond-the-basics/",
+      url: "https://fhiriq.com/fhir-beyond-the-basics/",
       category: "Advanced",
       icon: "fas fa-rocket",
       bgColor: "bg-purple-100",
@@ -51,7 +51,7 @@ export default function Resources() {
       id: "video-course",
       title: "FHIR for Developers Video Course",
       description: "Gino Canessa's comprehensive video course covering code-focused approaches to FHIR development with 27 detailed modules.",
-      url: "https://darrendevitt.com/fhir-for-developers-video-course/",
+      url: "https://fhiriq.com/fhir-for-developers-video-course/",
       category: "Video Learning",
       icon: "fas fa-video",
       bgColor: "bg-red-100",
@@ -62,7 +62,7 @@ export default function Resources() {
       id: "getting-started",
       title: "Getting Started With FHIR",
       description: "Essential concepts and practical guidance for teams beginning their FHIR implementation journey.",
-      url: "https://darrendevitt.com/topics/getting-started-with-fhir/",
+      url: "https://fhiriq.com/topics/getting-started-with-fhir/",
       category: "Getting Started",
       icon: "fas fa-compass",
       bgColor: "bg-teal-100",
@@ -128,16 +128,16 @@ export default function Resources() {
         <p className="text-lg text-muted-foreground">Curated materials from globally recognized FHIR experts</p>
       </div>
 
-      {/* Expert Resources by Darren Devitt */}
+      {/* Expert Resources by FHIR IQ */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-3">
             <i className="fas fa-star text-primary"></i>
-            <span>Expert Resources by Darren Devitt</span>
+            <span>Expert Resources by FHIR IQ</span>
           </CardTitle>
           <p className="text-muted-foreground">
-            Darren Devitt is a globally recognized FHIR expert who has helped companies like Olympus, Optum, 
-            and United Healthcare with their FHIR projects. Here are his most valuable educational resources.
+FHIR IQ is a globally recognized FHIR expert organization that has helped companies like Olympus, Optum, 
+            and United Healthcare with their FHIR projects. Here are their most valuable educational resources.
           </p>
         </CardHeader>
         <CardContent>
@@ -187,9 +187,9 @@ export default function Resources() {
             <div className="flex items-center space-x-3">
               <i className="fas fa-user-tie text-blue-600"></i>
               <div>
-                <p className="text-sm font-medium text-blue-800">About Darren Devitt</p>
+                <p className="text-sm font-medium text-blue-800">About FHIR IQ</p>
                 <p className="text-xs text-blue-600">
-                  Globally recognized FHIR expert, FHIR DevDays presenter, and advisor to leading MedTech companies, 
+                  Globally recognized FHIR expert organization, FHIR DevDays presenter, and advisor to leading MedTech companies, 
                   large US health insurance companies, and healthcare providers worldwide.
                 </p>
               </div>

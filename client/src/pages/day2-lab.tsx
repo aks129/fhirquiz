@@ -314,7 +314,7 @@ FROM risk_factors;`
                 className="text-orange-600 hover:underline ml-1"
                 data-testid="link-codeable-concepts"
               >
-                Darren Devitt's CodeableConcept deep-dive →
+                FHIR IQ's CodeableConcept deep-dive →
               </a>
             </p>
           </div>

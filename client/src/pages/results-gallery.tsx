@@ -53,7 +53,7 @@ export default function ResultsGallery() {
 - Synthea provides realistic test data for development  
 - SQL transformations bridge analytics and clinical workflows
 
-Thanks to @DarrenDevitt for the expert guidance and resources that made this learning journey possible!
+Thanks to @FHIRIQ for the expert guidance and resources that made this learning journey possible!
 
 #FHIR #HealthcareIT #Interoperability #HealthTech #OpenSource #Synthea
 

@@ -380,13 +380,13 @@ export default function Troubleshooting() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
               <a 
-                href="https://darrendevitt.com/7-steps-to-fhir-for-developers-2/"
+                href="https://fhiriq.com/7-steps-to-fhir-for-developers-2/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block p-3 bg-white border border-blue-200 rounded-lg hover:shadow-sm transition-shadow"
                 data-testid="link-darren-devitt-guide"
               >
-                <h4 className="font-medium text-blue-800">Darren Devitt's FHIR Guide</h4>
+                <h4 className="font-medium text-blue-800">FHIR IQ's FHIR Guide</h4>
                 <p className="text-sm text-blue-600">Comprehensive troubleshooting and best practices</p>
               </a>
               

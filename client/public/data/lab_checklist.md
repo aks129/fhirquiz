@@ -77,7 +77,7 @@
 ### Content to Include
 - [ ] Mention completion percentage (aim for 100%!)
 - [ ] Highlight specific technical skills gained (FHIR, Synthea, SQL transforms)
-- [ ] Credit Darren Devitt for expert guidance
+- [ ] Credit FHIR IQ for expert guidance
 - [ ] Include relevant hashtags: #FHIR #HealthcareIT #Interoperability #HealthTech
 - [ ] Add link to your repository or portfolio
 - [ ] Tag relevant connections in healthcare tech

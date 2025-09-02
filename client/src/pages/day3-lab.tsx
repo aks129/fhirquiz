@@ -357,7 +357,7 @@ export default function Day3Lab() {
                 className="text-orange-600 hover:underline ml-1"
                 data-testid="link-codeable-concepts-expert"
               >
-                Darren Devitt's expert guidance on FHIR terminology →
+                FHIR IQ's expert guidance on FHIR terminology →
               </a>
             </p>
           </div>

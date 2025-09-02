@@ -58,7 +58,7 @@ For additional synthetic patient data beyond the single patient provided:
 
 ### FHIR Test Data Best Practices
 
-According to [Darren Devitt's guidance](https://darrendevitt.com/fhir-test-data-from-synthea/):
+According to [FHIR IQ's guidance](https://fhiriq.com/fhir-test-data-from-synthea/):
 
 1. **Start Small**: Use the provided single-patient bundle first
 2. **Validate Structure**: Ensure bundles are properly formatted FHIR R4

@@ -143,7 +143,7 @@ export default function Overview() {
                 <i className="fas fa-info-circle text-blue-500 mt-0.5"></i>
                 <div>
                   <p className="text-sm text-blue-700 font-medium mb-1">No Prior FHIR Experience Needed!</p>
-                  <p className="text-xs text-blue-600">We'll cover FHIR basics as we go, with links to expert resources from Darren Devitt.</p>
+                  <p className="text-xs text-blue-600">We'll cover FHIR basics as we go, with links to expert resources from FHIR IQ.</p>
                 </div>
               </div>
             </div>
@@ -271,7 +271,7 @@ export default function Overview() {
             <div className="flex items-start space-x-3">
               <i className="fas fa-external-link-alt text-blue-500 mt-1"></i>
               <div>
-                <p className="text-sm text-blue-700 font-medium mb-1">Learn More from FHIR Expert Darren Devitt</p>
+                <p className="text-sm text-blue-700 font-medium mb-1">Learn More from FHIR Expert FHIR IQ</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   <a 
                     href="https://darrendevitt.com/7-steps-to-fhir-for-developers-2/" 
