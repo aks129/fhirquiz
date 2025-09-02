@@ -107,6 +107,15 @@ export class MemStorage implements IStorage {
   private seedFhirServers() {
     const defaultServers: FhirServer[] = [
       {
+        id: "local-hapi",
+        name: "Local HAPI FHIR Server",
+        baseUrl: "http://localhost:8080/fhir",
+        description: "Local HAPI FHIR R4 server (Docker)",
+        fhirVersion: "R4",
+        isPublic: false,
+        createdAt: new Date(),
+      },
+      {
         id: "hapi-public",
         name: "HAPI FHIR Server (Public)",
         baseUrl: "https://hapi.fhir.org/baseR4",

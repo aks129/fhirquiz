@@ -746,6 +746,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Seed local HAPI FHIR server endpoint
+  app.get("/ops/seed-local-fhir", async (req, res) => {
+    try {
+      const localHapiUrl = "http://localhost:8080/fhir";
+      
+      // Read sample Synthea data
+      const syntheaPath = path.join(process.cwd(), "client/public/data/synthea_patient_small.json");
+      const syntheaData = await fs.readFile(syntheaPath, 'utf-8');
+      const bundle = JSON.parse(syntheaData);
+      
+      // Upload bundle to local HAPI server
+      const uploadResponse = await fetch(localHapiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/fhir+json',
+        },
+        body: JSON.stringify(bundle)
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error(`HAPI upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
+      }
+      
+      const result = await uploadResponse.json();
+      
+      res.json({
+        success: true,
+        message: "Local HAPI FHIR server seeded successfully",
+        resourcesUploaded: bundle.entry?.length || 0,
+        fhirServer: localHapiUrl,
+        bundleId: result.id
+      });
+    } catch (error) {
+      console.error("Error seeding local HAPI server:", error);
+      res.status(500).json({ 
+        error: "Failed to seed local HAPI server",
+        details: error instanceof Error ? error.message : "Unknown error",
+        tip: "Make sure the local HAPI server is running with 'make up'"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
