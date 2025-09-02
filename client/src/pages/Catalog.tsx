@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useAccess } from "@/hooks/useAccess";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Package, Star, Clock, CheckCircle, ExternalLink } from "lucide-react";
+import { Link } from "wouter";
+import { Loader2, Package, Star, Clock, CheckCircle, ExternalLink, BookOpen, Play } from "lucide-react";
 
 interface Product {
   id: string;
@@ -16,15 +18,6 @@ interface Product {
   price_cents: number;
   stripe_price_id: string | null;
   is_active: boolean;
-}
-
-interface StripePrice {
-  id: string;
-  type: 'one_time' | 'recurring';
-  recurring?: {
-    interval: 'day' | 'week' | 'month' | 'year';
-    interval_count: number;
-  };
 }
 
 export default function Catalog() {
@@ -49,14 +42,12 @@ export default function Catalog() {
       return response;
     },
     onSuccess: (data) => {
-      // Show checkout initiation toast
       toast({
         title: "Redirecting to checkout",
         description: "Taking you to secure Stripe checkout to complete your purchase.",
         variant: "default"
       });
       
-      // Redirect to Stripe Checkout
       if (data.url) {
         window.location.href = data.url;
       }
@@ -106,6 +97,24 @@ export default function Catalog() {
 
   const getProductFeatures = (sku: string) => {
     const features = {
+      'fhir-bootcamp-basic': [
+        'Complete 3-day FHIR bootcamp curriculum',
+        'Hands-on labs with synthetic data',
+        'FHIR server setup and configuration',
+        'Data ingestion and transformation',
+        'Basic analytics and reporting',
+        '30-day access to materials'
+      ],
+      'fhir-bootcamp-plus': [
+        'Everything in Basic, plus:',
+        'Advanced FHIR interoperability patterns',
+        'Custom data transformation scripts',
+        'Production-ready deployment guides',
+        'BYOD (Bring Your Own Data) workshops',
+        'Priority instructor support',
+        '90-day access to materials',
+        'Certificate of completion'
+      ],
       'FHIR-BASIC': [
         'Complete 3-day FHIR bootcamp curriculum',
         'Hands-on labs with synthetic data',
@@ -123,16 +132,6 @@ export default function Catalog() {
         'Priority instructor support',
         '90-day access to materials',
         'Certificate of completion'
-      ],
-      'FHIR-ENTERPRISE': [
-        'Everything in Pro, plus:',
-        'Private instructor-led sessions',
-        'Custom curriculum for your organization',
-        'Integration with your FHIR infrastructure',
-        'Advanced security and compliance topics',
-        'Dedicated Slack workspace',
-        '1-year access to materials',
-        'Post-training consultation sessions'
       ]
     };
 
@@ -144,7 +143,194 @@ export default function Catalog() {
   };
 
   const isPopular = (sku: string) => {
-    return sku === 'FHIR-PRO';
+    return sku === 'FHIR-PRO' || sku === 'fhir-bootcamp-plus';
+  };
+
+  const FreeCourseCard = () => {
+    const { canAccess, isLoading: accessLoading } = useAccess('fhir-101');
+    
+    return (
+      <Card className="relative" data-testid="course-card-fhir-101">
+        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+          <Badge className="bg-green-500 text-white px-3 py-1">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Free
+          </Badge>
+        </div>
+        
+        <CardHeader className="text-center pb-4">
+          <CardTitle className="text-xl">FHIR 101</CardTitle>
+          <div className="text-2xl font-bold text-green-600 my-2">
+            Free
+          </div>
+          <CardDescription className="text-base">
+            Master the basics of FHIR and healthcare data exchange
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          <ul className="space-y-2 text-sm">
+            {[
+              'Introduction to FHIR concepts',
+              'Resource navigation and structure',
+              'Basic API operations',
+              'Healthcare data exchange fundamentals',
+              '4-6 hours of content'
+            ].map((feature, index) => (
+              <li key={index} className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+          
+          <div className="pt-4 space-y-3">
+            <Link href="/course/fhir-101">
+              <Button className="w-full" variant="outline" data-testid="view-course-fhir-101">
+                View Course Details
+              </Button>
+            </Link>
+            
+            {accessLoading ? (
+              <Button className="w-full" disabled>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Checking Access...
+              </Button>
+            ) : canAccess ? (
+              <Button className="w-full" data-testid="continue-fhir-101" onClick={() => window.location.href = "/course/fhir-101/start"}>
+                <Play className="h-4 w-4 mr-2" />
+                Continue Learning
+              </Button>
+            ) : (
+              <Button className="w-full" data-testid="enroll-fhir-101" onClick={() => window.location.href = "/course/fhir-101/start"}>
+                <BookOpen className="h-4 w-4 mr-2" />
+                Enroll Now (Free)
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  interface PaidCourseCardProps {
+    product: Product;
+    courseSlug?: string;
+    features: string[];
+    popular: boolean;
+    loading: boolean;
+    onPurchase: (product: Product, trialDays?: number) => void;
+  }
+
+  const PaidCourseCard = ({ product, courseSlug, features, popular, loading, onPurchase }: PaidCourseCardProps) => {
+    const { canAccess, reason, isLoading: accessLoading } = useAccess(courseSlug || '');
+    
+    const getCTAButtons = () => {
+      if (accessLoading) {
+        return (
+          <Button className="w-full" disabled>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Checking Access...
+          </Button>
+        );
+      }
+
+      if (canAccess) {
+        return (
+          <Button 
+            className="w-full" 
+            onClick={() => window.location.href = `/course/${courseSlug}/start`}
+            data-testid={`continue-${product.sku}`}
+          >
+            <Play className="h-4 w-4 mr-2" />
+            {reason === 'trial_active' ? 'Continue Trial' : 'Continue Learning'}
+          </Button>
+        );
+      }
+
+      return (
+        <div className="space-y-3">
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => onPurchase(product, 7)}
+            disabled={loading}
+            data-testid={`trial-btn-${product.sku}`}
+          >
+            {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Start 7-Day Free Trial
+          </Button>
+          
+          <Button 
+            className={`w-full ${popular ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+            onClick={() => onPurchase(product)}
+            disabled={loading}
+            data-testid={`buy-btn-${product.sku}`}
+          >
+            {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Enroll Now
+          </Button>
+        </div>
+      );
+    };
+
+    return (
+      <Card 
+        className={`relative ${popular ? 'border-blue-500 shadow-lg scale-105' : ''}`}
+        data-testid={`product-card-${product.sku}`}
+      >
+        {popular && (
+          <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+            <Badge className="bg-blue-500 text-white px-3 py-1">
+              <Star className="h-3 w-3 mr-1" />
+              Most Popular
+            </Badge>
+          </div>
+        )}
+        
+        <CardHeader className="text-center pb-4">
+          <CardTitle className="text-xl">{product.name}</CardTitle>
+          <div className="text-2xl font-bold text-blue-600 my-2">
+            {formatPrice(product.price_cents)}
+            <div className="text-sm text-gray-500 font-normal">
+              7-day free trial
+            </div>
+          </div>
+          {product.description && (
+            <CardDescription className="text-base">
+              {product.description}
+            </CardDescription>
+          )}
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            {features.slice(0, 5).map((feature, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                <span className="text-sm">{feature}</span>
+              </div>
+            ))}
+          </div>
+
+          {courseSlug && (
+            <Link href={`/course/${courseSlug}`}>
+              <Button variant="ghost" className="w-full text-blue-600 hover:text-blue-700" data-testid={`details-${product.sku}`}>
+                View Full Syllabus & Details
+                <ExternalLink className="h-3 w-3 ml-1" />
+              </Button>
+            </Link>
+          )}
+
+          {getCTAButtons()}
+
+          <div className="text-xs text-muted-foreground text-center pt-4 border-t">
+            <div className="mb-1">Secure payment powered by Stripe</div>
+            <div>30-day money-back guarantee</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   if (authLoading || isLoading) {
@@ -185,84 +371,31 @@ export default function Catalog() {
 
         {/* Course Packages */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <FreeCourseCard />
+          
           {products.map((product) => {
             const features = getProductFeatures(product.sku);
             const popular = isPopular(product.sku);
             const loading = loadingProduct === product.id;
+            
+            const courseSlugMap = {
+              'fhir-bootcamp-basic': 'health-data-bootcamp',
+              'fhir-bootcamp-plus': 'fhir-deep-dive',
+              'FHIR-BASIC': 'health-data-bootcamp',
+              'FHIR-PRO': 'fhir-deep-dive'
+            };
+            const courseSlug = courseSlugMap[product.sku as keyof typeof courseSlugMap];
 
             return (
-              <Card 
-                key={product.id} 
-                className={`relative ${popular ? 'border-blue-500 shadow-lg scale-105' : ''}`}
-                data-testid={`product-card-${product.sku}`}
-              >
-                {popular && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-blue-500 text-white px-3 py-1">
-                      <Star className="h-3 w-3 mr-1" />
-                      Most Popular
-                    </Badge>
-                  </div>
-                )}
-                
-                <CardHeader className="text-center pb-4">
-                  <CardTitle className="text-2xl">{product.name}</CardTitle>
-                  <div className="text-3xl font-bold text-blue-600 my-2">
-                    {formatPrice(product.price_cents)}
-                  </div>
-                  {product.description && (
-                    <CardDescription className="text-base">
-                      {product.description}
-                    </CardDescription>
-                  )}
-                </CardHeader>
-
-                <CardContent className="space-y-6">
-                  {/* Features List */}
-                  <div className="space-y-3">
-                    {features.map((feature, index) => (
-                      <div key={index} className="flex items-start gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="space-y-3">
-                    {/* Free Trial Button (for subscription products) */}
-                    {product.sku !== 'FHIR-BASIC' && (
-                      <Button 
-                        variant="outline" 
-                        className="w-full"
-                        onClick={() => handlePurchase(product, 7)}
-                        disabled={loading}
-                        data-testid={`trial-btn-${product.sku}`}
-                      >
-                        {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                        Start 7-Day Free Trial
-                      </Button>
-                    )}
-                    
-                    {/* Purchase Button */}
-                    <Button 
-                      className={`w-full ${popular ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                      onClick={() => handlePurchase(product)}
-                      disabled={loading}
-                      data-testid={`buy-btn-${product.sku}`}
-                    >
-                      {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                      {product.sku === 'FHIR-BASIC' ? 'Buy Now' : 'Buy Full Access'}
-                    </Button>
-                  </div>
-
-                  {/* Additional Info */}
-                  <div className="text-xs text-muted-foreground text-center pt-4 border-t">
-                    <div className="mb-1">Secure payment powered by Stripe</div>
-                    <div>30-day money-back guarantee</div>
-                  </div>
-                </CardContent>
-              </Card>
+              <PaidCourseCard 
+                key={product.id}
+                product={product}
+                courseSlug={courseSlug}
+                features={features}
+                popular={popular}
+                loading={loading}
+                onPurchase={handlePurchase}
+              />
             );
           })}
         </div>
@@ -277,7 +410,6 @@ export default function Catalog() {
           </div>
         )}
 
-        {/* Authentication Notice */}
         {!user && (
           <div className="max-w-md mx-auto mt-12 p-6 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
             <div className="text-center">

@@ -295,38 +295,52 @@ export function registerBillingRoutes(app: Express) {
     try {
       const { courseSlug } = req.params;
       const user = (req as any).user;
-      
-      // Get course details
-      const courseResponse = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/courses?slug=eq.${courseSlug}&select=*`, {
-        headers: {
-          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
-          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
-          'Content-Type': 'application/json'
+
+      // Check if user is in demo mode
+      if (user.id === 'demo-user-123') {
+        return res.json({ 
+          canAccess: true, 
+          reason: 'purchased',
+          purchase: {
+            id: 'demo_purchase',
+            status: 'active',
+            product_sku: 'fhir-bootcamp-basic'
+          }
+        });
+      }
+
+      // Course access rules based on slug
+      const courseRules = {
+        'fhir-101': { 
+          isFree: true, 
+          requiresProduct: null 
+        },
+        'health-data-bootcamp': { 
+          isFree: false, 
+          requiresProduct: 'fhir-bootcamp-basic' 
+        },
+        'fhir-deep-dive': { 
+          isFree: false, 
+          requiresProduct: 'fhir-bootcamp-plus' 
         }
-      });
+      };
 
-      if (!courseResponse.ok) {
+      const courseRule = courseRules[courseSlug as keyof typeof courseRules];
+      if (!courseRule) {
         return res.status(404).json({ error: 'Course not found' });
       }
-
-      const courses = await courseResponse.json();
-      if (courses.length === 0) {
-        return res.status(404).json({ error: 'Course not found' });
-      }
-
-      const course = courses[0];
 
       // If course is free, allow access
-      if (course.is_free) {
+      if (courseRule.isFree) {
         return res.json({ canAccess: true, reason: 'free_course' });
       }
 
       // Check user purchases for required product
-      if (!course.requires_product_sku) {
+      if (!courseRule.requiresProduct) {
         return res.json({ canAccess: false, reason: 'no_product_required' });
       }
 
-      const purchaseResponse = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/purchases?user_id=eq.${user.id}&product_sku=eq.${course.requires_product_sku}&select=*`, {
+      const response = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/purchases?user_id=eq.${user.id}&product_sku=eq.${courseRule.requiresProduct}&select=*`, {
         headers: {
           'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
           'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
@@ -334,11 +348,11 @@ export function registerBillingRoutes(app: Express) {
         }
       });
 
-      if (!purchaseResponse.ok) {
-        throw new Error(`HTTP ${purchaseResponse.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
 
-      const purchases = await purchaseResponse.json();
+      const purchases = await response.json();
       const activePurchase = purchases.find((p: any) => 
         ['trialing', 'active'].includes(p.status)
       );
@@ -352,11 +366,16 @@ export function registerBillingRoutes(app: Express) {
         const trialEnd = new Date(activePurchase.trial_ends_at);
         const now = new Date();
         if (trialEnd <= now) {
-          return res.json({ canAccess: false, reason: 'trial_expired' });
+          return res.json({ canAccess: false, reason: 'trial_expired', trialEndsAt: activePurchase.trial_ends_at });
         }
       }
 
-      res.json({ canAccess: true, reason: activePurchase.status, purchase: activePurchase });
+      res.json({ 
+        canAccess: true, 
+        reason: activePurchase.status, 
+        purchase: activePurchase,
+        trialEndsAt: activePurchase.trial_ends_at 
+      });
     } catch (error: any) {
       console.error("Error checking course access:", error);
       res.status(500).json({ error: "Failed to check access" });

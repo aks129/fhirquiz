@@ -24,6 +24,7 @@ import DemoPage from "@/pages/demo";
 import AdminDashboard from "@/pages/AdminDashboard";
 import InstructorDashboard from "@/pages/InstructorDashboard";
 import Catalog from "@/pages/Catalog";
+import CourseDetail from "@/pages/CourseDetail";
 import BillingSuccess from "@/pages/BillingSuccess";
 import BillingCancel from "@/pages/BillingCancel";
 import Rewards from "@/pages/rewards";
@@ -121,6 +122,7 @@ function Router() {
             <Route path="/admin" component={AdminDashboard} />
             <Route path="/instructor" component={InstructorDashboard} />
             <Route path="/catalog" component={Catalog} />
+            <Route path="/course/:courseSlug" component={CourseDetail} />
             <Route path="/auth" component={Auth} />
             <Route component={NotFound} />
           </Switch>
