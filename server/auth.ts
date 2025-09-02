@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import jwksClient from 'jwks-client';
+import * as jwksClient from 'jwks-client';
 import { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 
@@ -36,7 +36,7 @@ declare global {
 class SupabaseAuth {
   private supabaseUrl: string;
   private serviceKey: string;
-  private jwksClient: jwksClient.JwksClient;
+  private jwksClient: any;
 
   constructor() {
     this.supabaseUrl = process.env.VITE_SUPABASE_URL || '';
@@ -63,7 +63,7 @@ class SupabaseAuth {
     }
 
     // Initialize JWKS client
-    this.jwksClient = jwksClient({
+    this.jwksClient = jwksClient.default({
       jwksUri: `https://${projectId}.supabase.co/rest/v1/auth/.well-known/jwks`,
       cache: true,
       cacheMaxEntries: 5,
