@@ -1,0 +1,249 @@
+1) Add a quiz engine (frontend + backend)
+
+Prompt to Replit AI:
+
+In the monorepo, implement a quiz system.
+
+Backend (apps/backend)
+
+Add quiz/ with:
+
+models.py (Pydantic): Quiz, Question, Choice, Attempt, Result.
+
+bank/ folder with JSON files: day1.json, day2.json, day3.json, fhir.json. Each contains 8–12 multiple-choice questions with: id, stem, choices (array with id, label, is_correct), explanation, tags.
+
+Endpoints:
+
+GET /quiz/:slug → returns quiz metadata + questions (without is_correct flags).
+
+POST /quiz/:slug/grade → accepts {answers:[{questionId, choiceId}]}, returns score, detailed feedback per question, and a passed: boolean using an 80% cutoff.
+
+POST /quiz/:slug/attempt → records attempt (date, score, duration, answers).
+
+Add unit tests for grading logic and edge cases (unanswered, multiple answers).
+
+Frontend (apps/frontend)
+
+Create components/QuizRunner.tsx: renders Q&A, single-select MC, progress bar, timer (optional), “Review answers” view with explanations.
+
+Pages:
+
+/quizzes/day1, /quizzes/day2, /quizzes/day3, /quizzes/fhir-basics.
+
+Each page fetches the quiz by slug and uses QuizRunner.
+
+Add a pass gate per day: Day 2 unlocks if Day 1 quiz ≥80%; Day 3 unlocks if Day 2 quiz ≥80%. Store quiz results in local storage and also POST to backend.
+
+Add a “Challenge Mode” toggle that shuffles questions and limits total time to 10 minutes.
+
+Surface quiz links at the bottom of each Day page and in the left nav with a checkmark once passed.
+
+Add a Results view in “Results Gallery” showing historical attempts and scores.
+
+2) Seed question banks (practical & FHIR-aware)
+
+Prompt to Replit AI:
+
+Populate apps/backend/quiz/bank/ with realistic question sets:
+
+day1.json: ingestion, bundles vs flat, IDs vs Identifiers, references, CSV export.
+
+day2.json: staging, joins, readmission logic, risk score toy model, CodeableConcept driving analytics.
+
+day3.json: POSTing Observation, CapabilityStatement basics, version pitfalls (R4 vs R5), sequential creates vs transaction bundle.
+
+fhir.json: beginner FHIR: Patient vs Encounter vs Observation, Bundle types, search basics (_id, _lastUpdated, subject), when to push results back, why no PHI on public servers.
+Ensure each question has a clear correct choice and a concise explanation that teaches.
+
+3) BYOD: file import UI + parsers (Apple Health, Google Fit, Fitbit, Garmin)
+
+Prompt to Replit AI:
+
+Add a Bring Your Own Data area with safe, local processing.
+
+Frontend
+
+New left-nav section: “Build Your Own App (BYOD)”.
+
+Page /byod with a 4-step wizard:
+
+Choose Source: Apple Health (ZIP/XML export), Google Fit (CSV), Fitbit (JSON), Garmin (CSV).
+
+Upload File(s): drag-and-drop; show file validations and size warnings; all processing client→backend only (no third-party calls).
+
+Map to FHIR: preview detected metrics (steps, resting HR, HRV, weight/BMI, sleep summary), choose which to convert, pick Patient ID and optional Encounter, select a code (or default “demo code system” code), set unit.
+
+Publish & Verify: generate Observation(s), POST to selected FHIR server, and show created links.
+
+Provide guardrails text: “No real PHI on public servers; use synthetic or consented data only.”
+
+Backend
+
+Add /byod/import/apple-health (POST, multipart): accepts Apple Health ZIP or export.xml. Parse Apple Health XML (typical <Record type="HKQuantityTypeIdentifierStepCount" ...> etc.). Extract: stepCount, restingHeartRate, heartRateVariabilitySDNN, bodyMass, bodyMassIndex, sleepAnalysis (summaries only).
+
+Add /byod/import/google-fit (CSV), /byod/import/fitbit (JSON), /byod/import/garmin (CSV). Each returns a normalized internal schema: [{ metric, start, end, value, unit, source }].
+
+Add /byod/preview (POST): returns a grouped preview (per metric) with sample rows, counts, and unit hints.
+
+Add /byod/map-to-fhir (POST): input { patientId, encounterId?, mappings:[{metric, codeSystem, code, display, unit}] }; returns FHIR Observation JSONs with proper CodeableConcept, valueQuantity, effectiveDateTime or effectivePeriod, category: [{coding: [{system:"http://terminology.hl7.org/CodeSystem/observation-category", code:"vital-signs"}]}] when appropriate.
+
+Add /byod/publish (POST): posts Observations to current FHIR server and returns created IDs; support batch with sequential retry.
+
+Persist a local byod_artifacts/{session} with raw uploads (if user consents), normalized CSV, and final Observation JSON bundle for download.
+
+4) Simple end-to-end use case template (“My Health Mini-App”)
+
+Prompt to Replit AI:
+
+Add a use-case generator inside /byod called “My Health Mini-App.”
+
+Wizard after publish step:
+
+Select up to 3 metrics (e.g., Steps, Resting HR, BMI).
+
+Choose one simple visualization per metric (line chart or weekly bar).
+
+Choose an optional derived score:
+
+Activity Streak: consecutive days ≥N steps.
+
+Recovery Check: flag if resting HR ↑ by X% vs 14-day baseline.
+
+Button “Generate Mini-App”.
+
+On click, scaffold a tiny React app in apps/frontend/generated/{timestamp}/ that:
+
+Pulls the same Observations from the configured FHIR server via backend proxy endpoints (/fhir/obs?patientId=...&code=...).
+
+Renders selected charts and the derived score.
+
+Includes a README.md with “How to run,” and a single-file export option (ZIP) so learners can fork it.
+
+Add a “Publish Back Again” button that lets the learner POST the derived score as a new Observation (code: demo placeholder; unit: arbitrary).
+
+Add a “Share” card that creates a markdown summary (what they built, metrics used, screenshots checklist).
+
+5) Mapping presets for common BYOD metrics
+
+Prompt to Replit AI:
+
+In /byod/map-to-fhir, include safe default mapping presets (toggleable):
+
+Steps → Observation category activity, code system placeholder like urn:demo:code, code steps, display “Step count”.
+
+Resting Heart Rate → category vital-signs, code resting-heart-rate (placeholder), unit beats/min.
+
+HRV (SDNN) → category vital-signs, code hrv-sdnn (placeholder), unit ms.
+
+BMI → category vital-signs, code bmi (placeholder), unit kg/m2.
+
+Weight → category vital-signs, code body-weight (placeholder), unit kg.
+Allow users to edit all code fields. Warn that production apps should use standard terminologies (e.g., LOINC/SNOMED) and local validation; keep placeholders in the bootcamp.
+
+6) Quiz interleaving + “BYOD badge”
+
+Prompt to Replit AI:
+
+On the Day 1 page: insert a 2-question micro-quiz after the FHIR 101 panel (counts toward Day 1 quiz score).
+
+On the Day 2 page: insert a 2-question micro-quiz after the transforms run.
+
+On the Day 3 page: insert a 3-question micro-quiz after the publish step.
+
+Add a BYOD badge in Results Gallery that unlocks when the learner:
+
+Successfully imports BYOD data,
+
+Publishes at least one Observation to FHIR,
+
+Generates a Mini-App ZIP.
+Store badges in local storage and show celebratory UI.
+
+7) Validation, tests, and guardrails
+
+Prompt to Replit AI:
+
+Add backend tests for:
+
+Apple Health XML parsing (sample fixtures with small XML snippets).
+
+Normalization outputs for Google Fit/Fitbit/Garmin.
+
+map-to-fhir structure correctness (required elements present; category/code/value/subject).
+
+Batch publish with partial failures (retry sequentially; return per-row status).
+
+Add frontend form validations: require Patient ID, at least one mapping, and server ping OK before enabling Publish.
+
+Add a “Privacy & Safety” section on /byod:
+
+Strongly discourage uploading real PHI to public servers.
+
+Recommend synthetic or consented samples for class.
+
+Remind learners how to point to a local FHIR server if they want to test with sensitive data.
+
+8) “Instructor Mode” toggles
+
+Prompt to Replit AI:
+
+Create an environment variable INSTRUCTOR_MODE=true|false.
+
+When true, unlock:
+
+A Quiz Editor (simple JSON editor) with import/export of question banks.
+
+A Server List Editor to add/remove FHIR base URLs for the class.
+
+A Reset Class button that clears attempts and artifacts (local only).
+
+Add a small lock icon in the nav showing Instructor Mode state.
+
+9) Sample BYOD fixtures and docs
+
+Prompt to Replit AI:
+
+Add minimal anonymized sample files under apps/frontend/public/byod-samples/:
+
+apple_health_sample.xml (tiny, non-PHI, fabricated values).
+
+google_fit_steps.csv, fitbit_hr.json, garmin_sleep.csv (fabricated).
+
+Add /docs/BYOD.md with:
+
+Where to download Apple Health exports on iPhone (Settings → Health → Export).
+
+How to unzip locally and choose export.xml.
+
+How Google Fit/Fitbit/Garmin exports typically look.
+
+What to select in the mapping step, and how to interpret preview warnings.
+
+How to point to a local HAPI FHIR for private testing.
+
+10) Demo script & expected outcomes (auto-generated)
+
+Prompt to Replit AI:
+
+Add a Generate Demo Script button on /byod that composes a markdown script with:
+
+Step-by-step of the learner’s chosen source, fields mapped, number of Observations created, and links to resources.
+
+Three screenshots to capture (import preview, mapping screen, Observation in FHIR server).
+
+A “What I built” paragraph for LinkedIn/GitHub readme.
+Save this markdown to artifacts/{username}/byod_demo.md and surface in Results Gallery.
+
+Optional: suggested quiz themes to seed
+
+Use these in your question banks (keep explanations short + practical):
+
+FHIR 101: Why Bundles? How references work. Patient vs Encounter vs Observation.
+
+Server Reality: CapabilityStatement, auth vs open servers, R4 vs R5 surprise.
+
+Analytics Fit: Why CodeableConcept matters, units, and consistent coding.
+
+Publish-Back: When to POST new vs update existing Observations; idempotency patterns.
+
+BYOD Gotchas: Apple Health timestamps/timezones; unit conversions (lbs↔kg); gaps and smoothing.
