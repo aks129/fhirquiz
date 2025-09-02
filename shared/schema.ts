@@ -299,6 +299,18 @@ export const byodObservations = pgTable("byod_observations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const generatedApps = pgTable("generated_apps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: text("session_id"),
+  byodSessionId: varchar("byod_session_id").references(() => byodSessions.id),
+  appName: text("app_name").notNull(),
+  appType: text("app_type").notNull(), // 'dashboard', 'trends', 'insights', 'custom'
+  config: jsonb("config"), // App configuration and layout
+  createdAt: timestamp("created_at").defaultNow(),
+  lastAccessed: timestamp("last_accessed"),
+});
+
 // Insert schemas for quiz system
 export const insertQuizSchema = createInsertSchema(quizzes).omit({
   id: true,
@@ -333,6 +345,12 @@ export const insertByodObservationSchema = createInsertSchema(byodObservations).
   createdAt: true,
 });
 
+export const insertGeneratedAppSchema = createInsertSchema(generatedApps).omit({
+  id: true,
+  createdAt: true,
+  lastAccessed: true,
+});
+
 // Quiz system types
 export type Quiz = typeof quizzes.$inferSelect;
 export type InsertQuiz = z.infer<typeof insertQuizSchema>;
@@ -354,6 +372,9 @@ export type InsertByodSession = z.infer<typeof insertByodSessionSchema>;
 
 export type ByodObservation = typeof byodObservations.$inferSelect;
 export type InsertByodObservation = z.infer<typeof insertByodObservationSchema>;
+
+export type GeneratedApp = typeof generatedApps.$inferSelect;
+export type InsertGeneratedApp = z.infer<typeof insertGeneratedAppSchema>;
 
 // Quiz API types
 export interface QuizData {
@@ -411,4 +432,25 @@ export interface ByodPublishRequest {
   encounterId?: string;
   mappings: ByodMapping[];
   fhirServerId: string;
+}
+
+// Mini-app generation types
+export interface AppGenerationRequest {
+  sessionId: string;
+  appName: string;
+  appType: 'dashboard' | 'trends' | 'insights' | 'custom';
+  metrics: string[];
+  config?: any;
+}
+
+export interface AppConfig {
+  theme: string;
+  charts: Array<{
+    type: 'line' | 'bar' | 'pie' | 'area';
+    metric: string;
+    title: string;
+    timeRange?: string;
+  }>;
+  layout: 'single' | 'grid' | 'tabs';
+  features: string[];
 }

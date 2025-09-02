@@ -7,6 +7,7 @@ import { insertFhirServerSchema, insertLabProgressSchema, insertBundleSchema, in
 import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
+import { extractHealthMetrics, generateMetricsPreview, createFhirObservations, publishObservationsToFhir, generateAppConfig } from "./byod/processor";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware for anonymous users
@@ -587,6 +588,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching quiz attempts:", error);
       res.status(500).json({ error: "Failed to fetch quiz attempts" });
+    }
+  });
+
+  // BYOD endpoints
+  app.post("/api/byod/import", async (req, res) => {
+    try {
+      const sessionId = req.headers['x-session-id'] as string;
+      const { sourceType, fileName, fileSize, rawData } = req.body;
+      
+      // Parse and process health data
+      const metrics = extractHealthMetrics(rawData, sourceType);
+      
+      // Create BYOD session
+      const session = await storage.createByodSession({
+        sessionId,
+        userId: null,
+        sourceType,
+        fileName,
+        fileSize,
+        rawData,
+        mappings: null
+      });
+      
+      const preview = generateMetricsPreview(metrics);
+      
+      res.json({
+        success: true,
+        sessionId: session.id,
+        recordCount: metrics.length,
+        metrics: Object.keys(preview),
+        preview
+      });
+    } catch (error) {
+      console.error("Error importing BYOD data:", error);
+      res.status(500).json({ error: "Failed to import health data" });
+    }
+  });
+
+  app.post("/api/byod/publish", async (req, res) => {
+    try {
+      const { byodSessionId, mappings, fhirServerId, patientId } = req.body;
+      
+      // Get BYOD session
+      const sessions = await storage.getByodSessions("");
+      const session = sessions.find(s => s.id === byodSessionId);
+      if (!session) {
+        return res.status(404).json({ error: "BYOD session not found" });
+      }
+      
+      // Get FHIR server
+      const fhirServer = await storage.getFhirServer(fhirServerId);
+      if (!fhirServer) {
+        return res.status(404).json({ error: "FHIR server not found" });
+      }
+      
+      // Convert data to FHIR Observations
+      const observations = await createFhirObservations(session.rawData, mappings, patientId);
+      
+      // Publish to FHIR server
+      const results = await publishObservationsToFhir(fhirServer.baseUrl, observations);
+      
+      // Store observation records
+      for (const obs of results) {
+        await storage.createByodObservation({
+          sessionId: session.id,
+          fhirId: obs.fhirId,
+          observationType: obs.type,
+          value: obs.value,
+          unit: obs.unit,
+          effectiveDate: obs.effectiveDate,
+          fhirServerId
+        });
+      }
+      
+      res.json({
+        success: true,
+        observationsCreated: results.length,
+        fhirIds: results.map(r => r.fhirId)
+      });
+    } catch (error) {
+      console.error("Error publishing BYOD data:", error);
+      res.status(500).json({ error: "Failed to publish to FHIR server" });
+    }
+  });
+
+  app.post("/api/byod/generate-app", async (req, res) => {
+    try {
+      const sessionId = req.headers['x-session-id'] as string;
+      const { byodSessionId, appName, appType, metrics, config } = req.body;
+      
+      // Generate app configuration
+      const appConfig = await generateAppConfig(appType, metrics, config);
+      
+      // Create generated app record
+      const app = await storage.createGeneratedApp({
+        sessionId,
+        userId: null,
+        byodSessionId,
+        appName,
+        appType,
+        config: appConfig
+      });
+      
+      res.json({
+        success: true,
+        appId: app.id,
+        appUrl: `/byod-app/${app.id}`,
+        config: appConfig
+      });
+    } catch (error) {
+      console.error("Error generating app:", error);
+      res.status(500).json({ error: "Failed to generate mini-app" });
+    }
+  });
+
+  app.get("/api/byod/sessions", async (req, res) => {
+    try {
+      const sessionId = req.headers['x-session-id'] as string;
+      const sessions = await storage.getByodSessions(sessionId);
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error fetching BYOD sessions:", error);
+      res.status(500).json({ error: "Failed to fetch BYOD sessions" });
+    }
+  });
+
+  app.get("/api/byod/apps", async (req, res) => {
+    try {
+      const sessionId = req.headers['x-session-id'] as string;
+      const apps = await storage.getGeneratedApps(sessionId);
+      res.json(apps);
+    } catch (error) {
+      console.error("Error fetching generated apps:", error);
+      res.status(500).json({ error: "Failed to fetch generated apps" });
     }
   });
 

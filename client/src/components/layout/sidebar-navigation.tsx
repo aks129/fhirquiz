@@ -66,6 +66,13 @@ export default function SidebarNavigation() {
       locked: day2Progress.percentage < 100,
     },
     {
+      id: "byod",
+      path: "/byod",
+      label: "BYOD (Bring Your Own Data)",
+      icon: "fas fa-upload",
+      locked: day3Progress.percentage < 100,
+    },
+    {
       id: "resources",
       path: "/resources",
       label: "Resources",

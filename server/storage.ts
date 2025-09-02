@@ -3,7 +3,8 @@ import { type User, type InsertUser, type FhirServer, type InsertFhirServer,
          type Artifact, type InsertArtifact, type Quiz, type InsertQuiz,
          type Question, type InsertQuestion, type Choice, type InsertChoice,
          type QuizAttempt, type InsertQuizAttempt, type QuizAnswer, type InsertQuizAnswer,
-         type ByodSession, type InsertByodSession, type ByodObservation, type InsertByodObservation } from "@shared/schema";
+         type ByodSession, type InsertByodSession, type ByodObservation, type InsertByodObservation,
+         type GeneratedApp, type InsertGeneratedApp } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -60,6 +61,11 @@ export interface IStorage {
   createByodSession(session: InsertByodSession): Promise<ByodSession>;
   getByodObservations(sessionId: string): Promise<ByodObservation[]>;
   createByodObservation(observation: InsertByodObservation): Promise<ByodObservation>;
+  
+  // Generated App operations
+  getGeneratedApps(sessionId: string): Promise<GeneratedApp[]>;
+  createGeneratedApp(app: InsertGeneratedApp): Promise<GeneratedApp>;
+  updateGeneratedApp(id: string, updates: Partial<GeneratedApp>): Promise<GeneratedApp>;
 }
 
 export class MemStorage implements IStorage {
@@ -75,6 +81,7 @@ export class MemStorage implements IStorage {
   private quizAnswers: Map<string, QuizAnswer>;
   private byodSessions: Map<string, ByodSession>;
   private byodObservations: Map<string, ByodObservation>;
+  private generatedApps: Map<string, GeneratedApp>;
 
   constructor() {
     this.users = new Map();
@@ -89,6 +96,7 @@ export class MemStorage implements IStorage {
     this.quizAnswers = new Map();
     this.byodSessions = new Map();
     this.byodObservations = new Map();
+    this.generatedApps = new Map();
     
     // Seed with default FHIR servers and quizzes
     this.seedFhirServers();
@@ -393,6 +401,35 @@ export class MemStorage implements IStorage {
     };
     this.byodObservations.set(id, observation);
     return observation;
+  }
+
+  // Generated App operations
+  async getGeneratedApps(sessionId: string): Promise<GeneratedApp[]> {
+    return Array.from(this.generatedApps.values()).filter(
+      app => app.sessionId === sessionId
+    );
+  }
+
+  async createGeneratedApp(insertApp: InsertGeneratedApp): Promise<GeneratedApp> {
+    const id = randomUUID();
+    const app: GeneratedApp = {
+      ...insertApp,
+      id,
+      createdAt: new Date(),
+      lastAccessed: new Date()
+    };
+    this.generatedApps.set(id, app);
+    return app;
+  }
+
+  async updateGeneratedApp(id: string, updates: Partial<GeneratedApp>): Promise<GeneratedApp> {
+    const app = this.generatedApps.get(id);
+    if (!app) {
+      throw new Error(`Generated app with id ${id} not found`);
+    }
+    const updatedApp = { ...app, ...updates, lastAccessed: new Date() };
+    this.generatedApps.set(id, updatedApp);
+    return updatedApp;
   }
 }
 
