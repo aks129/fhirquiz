@@ -84,6 +84,12 @@ export default function SidebarNavigation() {
       label: "Results Gallery",
       icon: "fas fa-trophy",
     },
+    {
+      id: "demo",
+      path: "/demo",
+      label: "🎭 Demo Mode",
+      icon: "fas fa-play-circle",
+    },
   ];
 
   return (

@@ -131,6 +131,166 @@ export class MemStorage implements IStorage {
     });
   }
 
+  // Initialize sample data for demo purposes
+  async initializeDemoData(demoSessionId: string = "demo-session-123"): Promise<void> {
+    // Sample lab progress for all 3 days
+    const progressData = [
+      { stepName: "server_setup", labDay: 1, completed: true, metadata: { server: "hapi-public" } },
+      { stepName: "bundle_upload", labDay: 1, completed: true, metadata: { bundleId: "demo-bundle-1" } },
+      { stepName: "csv_export", labDay: 1, completed: true, metadata: { artifactCount: 3 } },
+      { stepName: "sql_setup", labDay: 2, completed: true, metadata: { queryCount: 5 } },
+      { stepName: "risk_analysis", labDay: 2, completed: true, metadata: { riskScore: 85 } },
+      { stepName: "transform_complete", labDay: 2, completed: true, metadata: { transformedRows: 450 } },
+      { stepName: "observation_publish", labDay: 3, completed: true, metadata: { observationCount: 12 } },
+      { stepName: "api_integration", labDay: 3, completed: true, metadata: { endpointsTested: 8 } },
+      { stepName: "dashboard_complete", labDay: 3, completed: true, metadata: { chartsCreated: 6 } }
+    ];
+
+    for (const prog of progressData) {
+      await this.updateLabProgress({
+        sessionId: demoSessionId,
+        userId: null,
+        stepName: prog.stepName,
+        labDay: prog.labDay,
+        completed: prog.completed,
+        metadata: prog.metadata
+      });
+    }
+
+    // Sample bundles
+    const bundle = await this.createBundle({
+      sessionId: demoSessionId,
+      userId: null,
+      fileName: "synthea_sample_fhir_bundle.json",
+      fileSize: 245680,
+      resourceCount: 156,
+      uploadStatus: "completed",
+      fhirServerId: "hapi-public"
+    });
+
+    // Sample artifacts
+    const artifacts = [
+      { name: "patients.csv", type: "csv", labDay: 1, size: 15420 },
+      { name: "observations.csv", type: "csv", labDay: 1, size: 89650 },
+      { name: "conditions.csv", type: "csv", labDay: 1, size: 12350 },
+      { name: "risk_analysis.sql", type: "sql", labDay: 2, size: 2840 },
+      { name: "patient_risk_scores.csv", type: "result", labDay: 2, size: 8920 },
+      { name: "high_risk_observations.json", type: "fhir", labDay: 3, size: 45680 }
+    ];
+
+    for (const art of artifacts) {
+      await this.createArtifact({
+        sessionId: demoSessionId,
+        userId: null,
+        name: art.name,
+        type: art.type,
+        labDay: art.labDay,
+        filePath: `/demo/${art.name}`,
+        fileSize: art.size,
+        metadata: { demo: true }
+      });
+    }
+
+    // Sample quiz attempts
+    const quizzes = await this.getQuizzes();
+    for (const quiz of quizzes.slice(0, 3)) { // First 3 quizzes
+      const attempt = await this.createQuizAttempt({
+        sessionId: demoSessionId,
+        userId: null,
+        quizId: quiz.id
+      });
+
+      // Mark as completed with high score
+      await this.updateQuizAttempt(attempt.id, {
+        completedAt: new Date(),
+        score: Math.floor(Math.random() * 20) + 80, // 80-100%
+        totalQuestions: quiz.questionCount || 10,
+        correctAnswers: Math.floor((quiz.questionCount || 10) * 0.9) // 90% correct
+      });
+    }
+
+    // Sample BYOD session
+    const byodSession = await this.createByodSession({
+      sessionId: demoSessionId,
+      userId: null,
+      sourceType: "apple-health",
+      fileName: "apple_health_export.xml",
+      fileSize: 1250000,
+      rawData: {
+        HealthData: {
+          Record: [
+            { type: "HKQuantityTypeIdentifierHeartRate", value: "72", unit: "count/min", startDate: "2024-01-15" },
+            { type: "HKQuantityTypeIdentifierStepCount", value: "8450", unit: "count", startDate: "2024-01-15" },
+            { type: "HKQuantityTypeIdentifierBodyMass", value: "70.5", unit: "kg", startDate: "2024-01-15" }
+          ]
+        }
+      },
+      mappings: null
+    });
+
+    // Sample BYOD observations
+    const observations = [
+      { type: "HeartRate", value: "72", unit: "bpm", effectiveDate: new Date("2024-01-15") },
+      { type: "Steps", value: "8450", unit: "steps", effectiveDate: new Date("2024-01-15") },
+      { type: "Weight", value: "70.5", unit: "kg", effectiveDate: new Date("2024-01-15") }
+    ];
+
+    for (const obs of observations) {
+      await this.createByodObservation({
+        sessionId: byodSession.id,
+        fhirId: `demo-obs-${Math.random().toString(36).substr(2, 9)}`,
+        observationType: obs.type,
+        value: obs.value,
+        unit: obs.unit,
+        effectiveDate: obs.effectiveDate,
+        fhirServerId: "hapi-public"
+      });
+    }
+
+    // Sample generated apps
+    const apps = [
+      {
+        name: "My Health Dashboard",
+        type: "dashboard",
+        config: {
+          theme: "light" as const,
+          layout: "grid" as const,
+          charts: [
+            { type: "line" as const, metric: "HeartRate", title: "Heart Rate Trends" },
+            { type: "bar" as const, metric: "Steps", title: "Daily Steps" },
+            { type: "area" as const, metric: "Weight", title: "Weight Progress" }
+          ],
+          features: ["export", "share", "filters"]
+        }
+      },
+      {
+        name: "Activity Trends",
+        type: "trends",
+        config: {
+          theme: "dark" as const,
+          layout: "single" as const,
+          charts: [
+            { type: "area" as const, metric: "Steps", title: "Step Count Trend", timeRange: "90d" }
+          ],
+          features: ["trendlines", "predictions"]
+        }
+      }
+    ];
+
+    for (const app of apps) {
+      await this.createGeneratedApp({
+        sessionId: demoSessionId,
+        userId: null,
+        byodSessionId: byodSession.id,
+        appName: app.name,
+        appType: app.type,
+        config: app.config
+      });
+    }
+
+    console.log(`✅ Demo data initialized for session: ${demoSessionId}`);
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
   }

@@ -2,8 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import ProgressCard from "@/components/lab/progress-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link } from "wouter";
 import { LabProgress } from "@/types/api";
+import { PlayCircle, Sparkles } from "lucide-react";
 
 export default function Overview() {
   const { data: progress = [] } = useQuery<LabProgress[]>({
@@ -21,6 +23,9 @@ export default function Overview() {
   const day2Progress = getProgressForDay(2);
   const day3Progress = getProgressForDay(3);
 
+  const totalProgress = day1Progress.completed + day2Progress.completed + day3Progress.completed;
+  const hasAnyProgress = totalProgress > 0;
+
   const getLabStatus = (dayProgress: { completed: number; total: number }) => {
     if (dayProgress.completed === dayProgress.total && dayProgress.total > 0) return "complete";
     if (dayProgress.completed > 0) return "in-progress";
@@ -29,6 +34,27 @@ export default function Overview() {
 
   return (
     <div className="space-y-8">
+      {/* Demo Mode Banner - Show when no progress */}
+      {!hasAnyProgress && (
+        <Alert className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+          <Sparkles className="h-4 w-4" />
+          <AlertDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="font-semibold text-purple-900">New to the bootcamp?</span>
+                <span className="text-purple-700 ml-2">Try our Demo Mode to explore all features with sample data!</span>
+              </div>
+              <Link href="/demo">
+                <Button size="sm" className="ml-4" data-testid="button-try-demo">
+                  <PlayCircle className="w-4 h-4 mr-2" />
+                  Try Demo
+                </Button>
+              </Link>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Hero Section */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">

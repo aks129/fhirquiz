@@ -17,6 +17,7 @@ import { QuizDay3 } from "@/pages/quiz-day3";
 import { QuizFhir } from "@/pages/quiz-fhir";
 import ByodPage from "@/pages/byod";
 import MiniAppPage from "@/pages/mini-app";
+import DemoPage from "@/pages/demo";
 import NavigationHeader from "@/components/layout/navigation-header";
 import SidebarNavigation from "@/components/layout/sidebar-navigation";
 
@@ -39,6 +40,7 @@ function Router() {
             <Route path="/quiz/fhir" component={QuizFhir} />
             <Route path="/byod" component={ByodPage} />
             <Route path="/mini-app/:id" component={MiniAppPage} />
+            <Route path="/demo" component={DemoPage} />
             <Route path="/resources" component={Resources} />
             <Route path="/gallery" component={ResultsGallery} />
             <Route path="/troubleshooting" component={Troubleshooting} />

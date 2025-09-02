@@ -725,6 +725,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Demo endpoint to initialize sample data
+  app.post("/api/demo/initialize", async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+      const demoSessionId = sessionId || "demo-session-123";
+      
+      // Initialize demo data
+      await (storage as any).initializeDemoData(demoSessionId);
+      
+      res.json({
+        success: true,
+        message: "Demo data initialized successfully",
+        sessionId: demoSessionId,
+        instructions: `Set your session ID to '${demoSessionId}' to see all features in action`
+      });
+    } catch (error) {
+      console.error("Error initializing demo data:", error);
+      res.status(500).json({ error: "Failed to initialize demo data" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
