@@ -63,6 +63,7 @@ export default function NavigationHeader() {
 
   const navItems = [
     { path: "/overview", label: "Overview" },
+    { path: "/catalog", label: "Catalog" },
     { path: "/lab", label: "Labs" },
     { path: "/resources", label: "Resources" },
     { path: "/gallery", label: "Results Gallery" },

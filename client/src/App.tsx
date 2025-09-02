@@ -20,6 +20,9 @@ import MiniAppPage from "@/pages/mini-app";
 import DemoPage from "@/pages/demo";
 import AdminDashboard from "@/pages/AdminDashboard";
 import InstructorDashboard from "@/pages/InstructorDashboard";
+import Catalog from "@/pages/Catalog";
+import BillingSuccess from "@/pages/BillingSuccess";
+import BillingCancel from "@/pages/BillingCancel";
 import NavigationHeader from "@/components/layout/navigation-header";
 import SidebarNavigation from "@/components/layout/sidebar-navigation";
 
@@ -49,6 +52,9 @@ function Router() {
             <Route path="/troubleshooting" component={Troubleshooting} />
             <Route path="/admin" component={AdminDashboard} />
             <Route path="/instructor" component={InstructorDashboard} />
+            <Route path="/catalog" component={Catalog} />
+            <Route path="/billing/success" component={BillingSuccess} />
+            <Route path="/billing/cancel" component={BillingCancel} />
             <Route component={NotFound} />
           </Switch>
         </main>

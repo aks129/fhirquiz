@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupCors, extractUser } from "./auth";
 import { registerAuthRoutes } from "./routes-auth";
 import { registerAdminRoutes } from "./routes-admin";
+import { registerBillingRoutes } from "./routes-billing";
 import { insertFhirServerSchema, insertLabProgressSchema, insertBundleSchema, insertArtifactSchema,
          insertQuizAttemptSchema, insertQuizAnswerSchema, type QuizData, type QuizSubmission, 
          type QuizResult } from "@shared/schema";
@@ -33,6 +34,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register admin routes
   registerAdminRoutes(app);
+  
+  // Register billing routes
+  registerBillingRoutes(app);
 
   // FHIR Server endpoints
   app.get("/api/fhir/servers", async (req, res) => {
