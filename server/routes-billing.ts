@@ -22,6 +22,15 @@ export function registerBillingRoutes(app: Express) {
     try {
       const { priceId, trialDays } = req.body;
       const user = (req as any).user;
+
+      // Check if user is in demo mode
+      if (user.id === 'demo-user-123') {
+        // Return stubbed checkout session for demo mode
+        return res.json({
+          sessionId: 'cs_demo_123456789',
+          url: '/billing/success?session_id=cs_demo_123456789'
+        });
+      }
       
       if (!priceId) {
         return res.status(400).json({ error: "Price ID is required" });
@@ -109,6 +118,14 @@ export function registerBillingRoutes(app: Express) {
   app.get("/api/billing/portal", requireUser, async (req, res) => {
     try {
       const user = (req as any).user;
+
+      // Check if user is in demo mode
+      if (user.id === 'demo-user-123') {
+        return res.status(403).json({ 
+          error: "Billing portal is disabled in demo mode",
+          demo: true 
+        });
+      }
       
       if (!user.email) {
         return res.status(400).json({ error: "User email is required for portal access" });
@@ -196,6 +213,21 @@ export function registerBillingRoutes(app: Express) {
   app.get("/api/billing/session/:sessionId", requireUser, async (req, res) => {
     try {
       const { sessionId } = req.params;
+      const user = (req as any).user;
+
+      // Check if user is in demo mode or session is a demo session
+      if (user.id === 'demo-user-123' || sessionId === 'cs_demo_123456789') {
+        return res.json({
+          id: 'cs_demo_123456789',
+          payment_status: 'paid',
+          customer_email: 'demo@fhirbootcamp.com',
+          amount_total: 29900, // $299.00
+          currency: 'usd',
+          subscription_id: 'sub_demo_123',
+          payment_intent_id: 'pi_demo_123'
+        });
+      }
+
       const session = await stripe.checkout.sessions.retrieve(sessionId, {
         expand: ['customer', 'subscription', 'payment_intent']
       });
@@ -219,6 +251,24 @@ export function registerBillingRoutes(app: Express) {
   app.get("/api/billing/purchases", requireUser, async (req, res) => {
     try {
       const user = (req as any).user;
+
+      // Check if user is in demo mode
+      if (user.id === 'demo-user-123') {
+        return res.json([
+          {
+            id: 'purchase_demo_1',
+            user_id: 'demo-user-123',
+            product_sku: 'fhir-bootcamp-basic',
+            product_name: 'FHIR Bootcamp Basic',
+            amount: 29900,
+            currency: 'usd',
+            status: 'completed',
+            stripe_session_id: 'cs_demo_123456789',
+            created_at: '2024-01-01T10:00:00Z',
+            updated_at: '2024-01-01T10:00:00Z'
+          }
+        ]);
+      }
       
       const response = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/purchases?user_id=eq.${user.id}&select=*`, {
         headers: {

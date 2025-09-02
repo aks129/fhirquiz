@@ -16,8 +16,10 @@ interface SessionState {
   profile: Profile | null
   isAdmin: boolean
   isInstructor: boolean
+  isDemoMode: boolean
   setUser: (user: User | null) => void
   setProfile: (profile: Profile | null) => void
+  setDemoMode: (isDemo: boolean) => void
   clear: () => void
 }
 
@@ -26,6 +28,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   profile: null,
   isAdmin: false,
   isInstructor: false,
+  isDemoMode: false,
   
   setUser: (user) => {
     set({ user })
@@ -41,11 +44,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       isInstructor: profile?.role === 'instructor' || profile?.role === 'admin'
     })
   },
+
+  setDemoMode: (isDemo) => {
+    set({ isDemoMode: isDemo })
+  },
   
   clear: () => set({ 
     user: null, 
     profile: null, 
     isAdmin: false, 
-    isInstructor: false 
+    isInstructor: false,
+    isDemoMode: false
   })
 }))

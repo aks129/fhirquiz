@@ -12,9 +12,19 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  // Check if we're in demo mode (use window global since this can't access hooks)
+  const isDemoMode = window.localStorage.getItem('demo-mode') === 'true';
+  
+  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+  
+  // Add demo mode header if in demo mode
+  if (isDemoMode) {
+    headers['x-demo-mode'] = 'true';
+  }
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -29,8 +39,19 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    // Check if we're in demo mode
+    const isDemoMode = window.localStorage.getItem('demo-mode') === 'true';
+    
+    const headers: Record<string, string> = {};
+    
+    // Add demo mode header if in demo mode
+    if (isDemoMode) {
+      headers['x-demo-mode'] = 'true';
+    }
+
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

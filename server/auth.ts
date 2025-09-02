@@ -193,6 +193,24 @@ export const authHandler = new SupabaseAuth();
 // Middleware to extract and verify JWT token
 export const extractUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // Check for demo mode header first
+    const demoHeader = req.headers['x-demo-mode'];
+    if (demoHeader === 'true') {
+      // Create mock demo user
+      req.user = {
+        id: 'demo-user-123',
+        email: 'demo@fhirbootcamp.com',
+        user_metadata: {
+          full_name: 'Demo User',
+          avatar_url: null
+        },
+        role: 'student',
+        aud: 'authenticated',
+        exp: Math.floor(Date.now() / 1000) + 86400 // 24h expiry
+      };
+      return next();
+    }
+
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

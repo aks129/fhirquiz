@@ -28,10 +28,12 @@ import BillingSuccess from "@/pages/BillingSuccess";
 import BillingCancel from "@/pages/BillingCancel";
 import Rewards from "@/pages/rewards";
 import Profile from "@/pages/profile";
+import Auth from "@/pages/auth";
 import NavigationHeader from "@/components/layout/navigation-header";
 import SidebarNavigation from "@/components/layout/sidebar-navigation";
 import MarketingHeader from "@/components/layout/marketing-header";
 import SEOHead from "@/components/seo-head";
+import DemoBanner from "@/components/demo-banner";
 
 function Router() {
   const [location] = useLocation();
@@ -82,6 +84,7 @@ function Router() {
       <div className="flex max-w-7xl mx-auto">
         <SidebarNavigation />
         <main className="flex-1 p-6 lg:p-8">
+          <DemoBanner />
           <Switch>
             <Route path="/overview" component={Overview} />
             <Route path="/lab" component={() => { window.location.href = "/lab/day1"; return null; }} />
@@ -105,7 +108,7 @@ function Router() {
             <Route path="/profile" component={Profile} />
             <Route path="/billing/success" component={BillingSuccess} />
             <Route path="/billing/cancel" component={BillingCancel} />
-            <Route path="/auth" component={() => <div>Auth page</div>} />
+            <Route path="/auth" component={Auth} />
             <Route component={NotFound} />
           </Switch>
         </main>
