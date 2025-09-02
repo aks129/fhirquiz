@@ -18,6 +18,8 @@ import { QuizFhir } from "@/pages/quiz-fhir";
 import ByodPage from "@/pages/byod";
 import MiniAppPage from "@/pages/mini-app";
 import DemoPage from "@/pages/demo";
+import AdminDashboard from "@/pages/AdminDashboard";
+import InstructorDashboard from "@/pages/InstructorDashboard";
 import NavigationHeader from "@/components/layout/navigation-header";
 import SidebarNavigation from "@/components/layout/sidebar-navigation";
 
@@ -45,6 +47,8 @@ function Router() {
             <Route path="/resources" component={Resources} />
             <Route path="/gallery" component={ResultsGallery} />
             <Route path="/troubleshooting" component={Troubleshooting} />
+            <Route path="/admin" component={AdminDashboard} />
+            <Route path="/instructor" component={InstructorDashboard} />
             <Route component={NotFound} />
           </Switch>
         </main>
