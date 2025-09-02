@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Play, Save, Trash2, Clock, Download, Upload, FileText, ArrowDown, Settings, ChevronRight, ChevronLeft, Database, Search, Plus, X } from "lucide-react";
+import { Play, Save, Trash2, Clock, Download, Upload, FileText, ArrowDown, Settings, ChevronRight, ChevronLeft, Database, Search, Plus, X, Copy, Check, Info, AlertTriangle, Code2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getSelectedServer } from "@/lib/storage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -50,6 +50,266 @@ interface RequestData {
 }
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+
+const FHIR_SAMPLES = {
+  basics: [
+    {
+      name: "List Patients (Limited)",
+      method: "GET",
+      path: "/Patient",
+      queryParams: { "_count": "5" },
+      description: "Retrieve first 5 patients with pagination"
+    },
+    {
+      name: "Get Patient by ID", 
+      method: "GET",
+      path: "/Patient/example",
+      queryParams: {},
+      description: "Fetch a specific patient by their ID"
+    },
+    {
+      name: "Search Observations",
+      method: "GET", 
+      path: "/Observation",
+      queryParams: { "subject": "Patient/example", "date": "ge2023-01-01" },
+      description: "Find observations for a patient after a specific date"
+    }
+  ],
+  create: [
+    {
+      name: "Create Minimal Patient",
+      method: "POST",
+      path: "/Patient",
+      queryParams: {},
+      body: {
+        resourceType: "Patient",
+        name: [{ given: ["John"], family: "Doe" }],
+        gender: "male"
+      },
+      description: "Create a basic patient with minimal required fields"
+    },
+    {
+      name: "Create Observation with Value",
+      method: "POST", 
+      path: "/Observation",
+      queryParams: {},
+      body: {
+        resourceType: "Observation",
+        status: "final",
+        code: {
+          coding: [{
+            system: "http://loinc.org",
+            code: "8867-4",
+            display: "Heart rate"
+          }]
+        },
+        subject: { reference: "Patient/example" },
+        valueQuantity: {
+          value: 72,
+          unit: "beats/minute",
+          system: "http://unitsofmeasure.org",
+          code: "/min"
+        }
+      },
+      description: "Create a vital signs observation with quantity value"
+    }
+  ],
+  bundle: [
+    {
+      name: "Transaction Bundle",
+      method: "POST",
+      path: "",
+      queryParams: {},
+      body: {
+        resourceType: "Bundle",
+        type: "transaction",
+        entry: [
+          {
+            fullUrl: "urn:uuid:patient-1",
+            request: { method: "POST", url: "Patient" },
+            resource: {
+              resourceType: "Patient",
+              name: [{ given: ["Jane"], family: "Smith" }],
+              gender: "female"
+            }
+          },
+          {
+            fullUrl: "urn:uuid:encounter-1", 
+            request: { method: "POST", url: "Encounter" },
+            resource: {
+              resourceType: "Encounter",
+              status: "finished",
+              class: {
+                system: "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                code: "AMB"
+              },
+              subject: { reference: "urn:uuid:patient-1" }
+            }
+          },
+          {
+            fullUrl: "urn:uuid:observation-1",
+            request: { method: "POST", url: "Observation" },
+            resource: {
+              resourceType: "Observation", 
+              status: "final",
+              code: {
+                coding: [{
+                  system: "http://loinc.org",
+                  code: "29463-7",
+                  display: "Body Weight"
+                }]
+              },
+              subject: { reference: "urn:uuid:patient-1" },
+              encounter: { reference: "urn:uuid:encounter-1" },
+              valueQuantity: {
+                value: 70,
+                unit: "kg",
+                system: "http://unitsofmeasure.org",
+                code: "kg"
+              }
+            }
+          }
+        ]
+      },
+      description: "Create patient, encounter, and observation in single transaction"
+    }
+  ],
+  terminology: [
+    {
+      name: "Observation with CodeableConcept",
+      method: "POST",
+      path: "/Observation", 
+      queryParams: {},
+      body: {
+        resourceType: "Observation",
+        status: "final",
+        category: [{
+          coding: [{
+            system: "http://terminology.hl7.org/CodeSystem/observation-category",
+            code: "vital-signs",
+            display: "Vital Signs"
+          }]
+        }],
+        code: {
+          coding: [
+            {
+              system: "http://loinc.org",
+              code: "55284-4", 
+              display: "Blood pressure systolic and diastolic"
+            },
+            {
+              system: "http://snomed.info/sct",
+              code: "75367002",
+              display: "Blood pressure"
+            }
+          ],
+          text: "Blood Pressure"
+        },
+        subject: { reference: "Patient/example" },
+        component: [
+          {
+            code: {
+              coding: [{
+                system: "http://loinc.org",
+                code: "8480-6",
+                display: "Systolic blood pressure"
+              }]
+            },
+            valueQuantity: {
+              value: 120,
+              unit: "mmHg",
+              system: "http://unitsofmeasure.org",
+              code: "mm[Hg]"
+            }
+          }
+        ]
+      },
+      description: "Complex observation with multiple coding systems and components"
+    }
+  ],
+  include: [
+    {
+      name: "Observations with Patient Include",
+      method: "GET",
+      path: "/Observation", 
+      queryParams: { "_include": "Observation:subject", "_count": "10" },
+      description: "Get observations and automatically include referenced patients"
+    },
+    {
+      name: "Patient with Reverse Include", 
+      method: "GET",
+      path: "/Patient/example",
+      queryParams: { "_revinclude": "Observation:subject" },
+      description: "Get patient and all observations that reference them"
+    }
+  ]
+};
+
+const CHALLENGES = {
+  beginner: [
+    {
+      id: "search-patients-smith",
+      title: "Find Smith Family",
+      description: "Search for patients with family name 'Smith'",
+      points: 10,
+      assertion: {
+        type: "search",
+        checks: [
+          { field: "queryParams.family", operator: "equals", value: "Smith" },
+          { field: "response.entry.length", operator: "gt", value: 0 }
+        ]
+      }
+    },
+    {
+      id: "create-patient-basic",
+      title: "Create Your First Patient", 
+      description: "Create a patient resource with name and gender",
+      points: 15,
+      assertion: {
+        type: "create",
+        checks: [
+          { field: "response.status", operator: "equals", value: 201 },
+          { field: "body.resourceType", operator: "equals", value: "Patient" },
+          { field: "body.name", operator: "exists", value: null }
+        ]
+      }
+    }
+  ],
+  intermediate: [
+    {
+      id: "observation-with-reference",
+      title: "Link Observation to Patient",
+      description: "Create an observation with valueQuantity and link it to a patient",
+      points: 25,
+      assertion: {
+        type: "create", 
+        checks: [
+          { field: "response.status", operator: "equals", value: 201 },
+          { field: "body.resourceType", operator: "equals", value: "Observation" },
+          { field: "body.subject.reference", operator: "contains", value: "Patient/" },
+          { field: "body.valueQuantity.value", operator: "exists", value: null }
+        ]
+      }
+    }
+  ],
+  advanced: [
+    {
+      id: "transaction-bundle-integrity",
+      title: "Master Transaction Bundles",
+      description: "Submit a transaction bundle creating Patient+Encounter+Observation with proper references",
+      points: 50,
+      assertion: {
+        type: "bundle",
+        checks: [
+          { field: "response.status", operator: "equals", value: 200 },
+          { field: "body.resourceType", operator: "equals", value: "Bundle" },
+          { field: "body.entry.length", operator: "gte", value: 3 },
+          { field: "body.entry[*].response.status", operator: "contains", value: "201" }
+        ]
+      }
+    }
+  ]
+};
 
 const SAMPLE_REQUESTS = [
   {
@@ -206,6 +466,11 @@ export default function FhirSimulator() {
     etag: '',
     profileUrl: ''
   });
+  const [activeTab, setActiveTab] = useState('simulator');
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importData, setImportData] = useState('');
+  const [userPoints, setUserPoints] = useState(0);
+  const [userBadges, setUserBadges] = useState<string[]>([]);
 
   // Load persisted data and handle prefill on component mount
   useEffect(() => {
@@ -999,6 +1264,188 @@ export default function FhirSimulator() {
     return issues;
   };
 
+
+  // Sample functions
+  const loadSample = (sample: any) => {
+    setRequest({
+      method: sample.method,
+      path: sample.path,
+      queryParams: sample.queryParams || {},
+      headers: { "Accept": "application/fhir+json", "Content-Type": "application/fhir+json" },
+      body: sample.body,
+      bodyType: 'json'
+    });
+    setActiveTab('simulator');
+    toast({
+      title: "Sample Loaded",
+      description: `${sample.name} loaded in Request Builder`
+    });
+  };
+
+  const copySampleJSON = (sample: any) => {
+    const jsonString = JSON.stringify(sample, null, 2);
+    navigator.clipboard.writeText(jsonString);
+    toast({
+      title: "Copied to Clipboard",
+      description: "Sample JSON copied successfully"
+    });
+  };
+
+  // Import/Export functions
+  const importPostmanCollection = (jsonString: string) => {
+    try {
+      const collection = JSON.parse(jsonString);
+      if (!collection.info || !collection.item) {
+        throw new Error("Invalid Postman collection format");
+      }
+
+      const requests = collection.item.map((item: any) => {
+        const url = typeof item.request.url === 'string' ? item.request.url : item.request.url.raw;
+        const urlObj = new URL(url);
+        const path = urlObj.pathname;
+        const queryParams: Record<string, string> = {};
+        
+        if (item.request.url.query) {
+          item.request.url.query.forEach((param: any) => {
+            queryParams[param.key] = param.value;
+          });
+        }
+
+        const headers: Record<string, string> = {};
+        if (item.request.header) {
+          item.request.header.forEach((header: any) => {
+            headers[header.key] = header.value;
+          });
+        }
+
+        let body = undefined;
+        if (item.request.body && item.request.body.raw) {
+          try {
+            body = JSON.parse(item.request.body.raw);
+          } catch {
+            body = item.request.body.raw;
+          }
+        }
+
+        return {
+          method: item.request.method,
+          path,
+          queryParams,
+          headers,
+          body,
+          bodyType: 'json' as const
+        };
+      });
+
+      saveCollectionMutation.mutate({
+        name: collection.info.name,
+        description: collection.info.description || '',
+        requests,
+        tags: []
+      });
+
+    } catch (error) {
+      toast({
+        title: "Import Failed",
+        description: "Invalid Postman collection format",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const exportToPostman = (collection: Collection) => {
+    const postmanCollection = {
+      info: {
+        name: collection.name,
+        description: collection.description,
+        schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+      },
+      item: collection.requests.map((req) => ({
+        name: `${req.method} ${req.path}`,
+        request: {
+          method: req.method,
+          header: Object.entries(req.headers).map(([key, value]) => ({
+            key,
+            value,
+            type: "text"
+          })),
+          url: {
+            raw: `{{baseUrl}}${req.path}${Object.keys(req.queryParams).length ? '?' + new URLSearchParams(req.queryParams).toString() : ''}`,
+            host: ["{{baseUrl}}"],
+            path: req.path.split('/').filter(Boolean),
+            query: Object.entries(req.queryParams).map(([key, value]) => ({
+              key,
+              value
+            }))
+          },
+          body: req.body ? {
+            mode: "raw",
+            raw: typeof req.body === 'string' ? req.body : JSON.stringify(req.body, null, 2),
+            options: {
+              raw: {
+                language: "json"
+              }
+            }
+          } : undefined
+        }
+      })),
+      variable: [
+        {
+          key: "baseUrl",
+          value: "https://hapi.fhir.org/baseR4"
+        }
+      ]
+    };
+
+    const blob = new Blob([JSON.stringify(postmanCollection, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${collection.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.postman_collection.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export Successful",
+      description: `${collection.name} exported as Postman collection`
+    });
+  };
+
+  // Challenge functions
+  const runChallenge = async (challenge: any) => {
+    try {
+      const challengeResponse = await apiRequest('POST', '/sim/challenge', {
+        challengeId: challenge.id,
+        request: request,
+        response: response
+      });
+
+      if (challengeResponse.success) {
+        setUserPoints(prev => prev + challenge.points);
+        if (challengeResponse.firstTime) {
+          setUserBadges(prev => [...prev, challenge.id]);
+        }
+        
+        toast({
+          title: "Challenge Completed!",
+          description: `Earned ${challenge.points} FHIR points!`
+        });
+      } else {
+        toast({
+          title: "Challenge Failed",
+          description: challengeResponse.message || "Requirements not met",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Challenge Error",
+        description: "Failed to validate challenge",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Fetch history
   const { data: history = [] } = useQuery<HistoryEntry[]>({
     queryKey: ["/sim/history"],
@@ -1160,16 +1607,6 @@ export default function FhirSimulator() {
     });
   };
 
-  const loadSample = (sample: any) => {
-    setRequest({
-      method: sample.method,
-      path: sample.path,
-      queryParams: {},
-      headers: {},
-      body: sample.body,
-      bodyType: 'json'
-    });
-  };
 
   const formatJson = (obj: any) => {
     try {
@@ -1277,13 +1714,24 @@ export default function FhirSimulator() {
                                     {collection.requests.length} requests
                                   </p>
                                 </div>
-                                <Button
-      
-                                  variant="ghost"
-                                  onClick={() => deleteCollectionMutation.mutate(collection.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => exportToPostman(collection)}
+                                    data-testid={`export-collection-${collection.id}`}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                    Export
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => deleteCollectionMutation.mutate(collection.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -1351,31 +1799,73 @@ export default function FhirSimulator() {
 
               <TabsContent value="samples" className="space-y-4">
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg">Sample Requests</CardTitle>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => setShowImportDialog(true)}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Import
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <ScrollArea className="h-[400px]">
-                      <div className="space-y-2">
-                        {SAMPLE_REQUESTS.map((sample, index) => (
-                          <div
-                            key={index}
-                            className="p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                            onClick={() => loadSample(sample)}
-                          >
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="outline" className="text-xs">
-                                {sample.method}
-                              </Badge>
-                              <h4 className="font-medium text-sm">{sample.name}</h4>
-                            </div>
-                            <p className="text-sm font-mono text-gray-700 dark:text-gray-300 mb-1">
-                              {sample.path}
-                            </p>
-                            <p className="text-xs text-gray-500">{sample.description}</p>
-                          </div>
+                      <Tabs defaultValue="basics" orientation="horizontal">
+                        <TabsList className="mb-4">
+                          <TabsTrigger value="basics">Basics</TabsTrigger>
+                          <TabsTrigger value="create">Create</TabsTrigger>
+                          <TabsTrigger value="bundle">Bundle</TabsTrigger>
+                          <TabsTrigger value="terminology">Terminology</TabsTrigger>
+                          <TabsTrigger value="include">Include</TabsTrigger>
+                        </TabsList>
+
+                        {Object.entries(FHIR_SAMPLES).map(([category, samples]) => (
+                          <TabsContent key={category} value={category} className="space-y-2">
+                            {samples.map((sample, index) => (
+                              <div
+                                key={index}
+                                className="p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-xs">
+                                      {sample.method}
+                                    </Badge>
+                                    <h4 className="font-medium text-sm">{sample.name}</h4>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => loadSample(sample)}
+                                      data-testid={`load-sample-${sample.name.replace(/\s+/g, '-').toLowerCase()}`}
+                                    >
+                                      <Play className="h-4 w-4" />
+                                      Load
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => copySampleJSON(sample)}
+                                    >
+                                      <Copy className="h-4 w-4" />
+                                      Copy
+                                    </Button>
+                                  </div>
+                                </div>
+                                <p className="text-sm font-mono text-gray-700 dark:text-gray-300 mb-1">
+                                  {sample.path || 'Bundle Transaction'}
+                                </p>
+                                <p className="text-xs text-gray-500">{sample.description}</p>
+                              </div>
+                            ))}
+                          </TabsContent>
                         ))}
-                      </div>
+                      </Tabs>
                     </ScrollArea>
                   </CardContent>
                 </Card>
@@ -1383,48 +1873,67 @@ export default function FhirSimulator() {
 
               <TabsContent value="challenges" className="space-y-4">
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg">FHIR Challenges</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">{userPoints} points</Badge>
+                      <Badge variant="outline">{userBadges.length} badges</Badge>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <ScrollArea className="h-[400px]">
-                      <div className="space-y-4">
-                        <div className="p-4 border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20">
-                          <h4 className="font-medium text-blue-900 dark:text-blue-300">
-                            🔍 Challenge 1: Find Patient Demographics
-                          </h4>
-                          <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
-                            Search for patients born after 1990 and retrieve their basic demographics.
-                          </p>
-                        </div>
-                        
-                        <div className="p-4 border-l-4 border-green-500 bg-green-50 dark:bg-green-900/20">
-                          <h4 className="font-medium text-green-900 dark:text-green-300">
-                            📊 Challenge 2: Vital Signs Analysis
-                          </h4>
-                          <p className="text-sm text-green-700 dark:text-green-400 mt-1">
-                            Find all heart rate observations for a specific patient and calculate the average.
-                          </p>
-                        </div>
-                        
-                        <div className="p-4 border-l-4 border-purple-500 bg-purple-50 dark:bg-purple-900/20">
-                          <h4 className="font-medium text-purple-900 dark:text-purple-300">
-                            🏥 Challenge 3: Encounter Tracking
-                          </h4>
-                          <p className="text-sm text-purple-700 dark:text-purple-400 mt-1">
-                            Retrieve all encounters for a patient and identify the most recent hospitalization.
-                          </p>
-                        </div>
-                        
-                        <div className="p-4 border-l-4 border-orange-500 bg-orange-50 dark:bg-orange-900/20">
-                          <h4 className="font-medium text-orange-900 dark:text-orange-300">
-                            💊 Challenge 4: Medication History
-                          </h4>
-                          <p className="text-sm text-orange-700 dark:text-orange-400 mt-1">
-                            Create a medication request and link it to a patient encounter.
-                          </p>
-                        </div>
-                      </div>
+                      <Tabs defaultValue="beginner" orientation="horizontal">
+                        <TabsList className="mb-4">
+                          <TabsTrigger value="beginner">Beginner</TabsTrigger>
+                          <TabsTrigger value="intermediate">Intermediate</TabsTrigger>
+                          <TabsTrigger value="advanced">Advanced</TabsTrigger>
+                        </TabsList>
+
+                        {Object.entries(CHALLENGES).map(([level, challenges]) => (
+                          <TabsContent key={level} value={level} className="space-y-4">
+                            {challenges.map((challenge) => (
+                              <div
+                                key={challenge.id}
+                                className={`p-4 border rounded-lg ${
+                                  userBadges.includes(challenge.id)
+                                    ? 'border-green-200 bg-green-50 dark:bg-green-900/20'
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-medium">{challenge.title}</h4>
+                                    {userBadges.includes(challenge.id) && (
+                                      <Badge className="bg-green-100 text-green-800">
+                                        ✓ Completed
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline">{challenge.points} pts</Badge>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => runChallenge(challenge)}
+                                      disabled={!response}
+                                      data-testid={`challenge-${challenge.id}`}
+                                    >
+                                      {userBadges.includes(challenge.id) ? 'Retry' : 'Check'}
+                                    </Button>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-600 dark:text-gray-300">
+                                  {challenge.description}
+                                </p>
+                                {!response && (
+                                  <p className="text-xs text-amber-600 mt-2">
+                                    Send a request first to attempt this challenge
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
                     </ScrollArea>
                   </CardContent>
                 </Card>
@@ -2695,6 +3204,61 @@ export default function FhirSimulator() {
                   data-testid="insert-search"
                 >
                   Insert into Request Builder
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Postman Collection Dialog */}
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Import Postman Collection</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">
+                Paste Postman Collection JSON
+              </Label>
+              <Textarea
+                placeholder="Paste your exported Postman collection JSON here..."
+                value={importData}
+                onChange={(e) => setImportData(e.target.value)}
+                className="h-64"
+              />
+            </div>
+            
+            <div className="text-xs text-gray-500">
+              <p className="mb-2">Supported features:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Request methods (GET, POST, PUT, DELETE, etc.)</li>
+                <li>URL paths and query parameters</li>
+                <li>Headers (Authorization, Content-Type, etc.)</li>
+                <li>Request bodies (JSON format preferred)</li>
+                <li>Collection name and description</li>
+              </ul>
+            </div>
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setShowImportDialog(false)}>
+                Cancel
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setImportData('')}>
+                  Clear
+                </Button>
+                <Button
+                  onClick={() => {
+                    importPostmanCollection(importData);
+                    setImportData('');
+                    setShowImportDialog(false);
+                  }}
+                  disabled={!importData.trim()}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import
                 </Button>
               </div>
             </div>

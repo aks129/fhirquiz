@@ -224,6 +224,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Challenge validation endpoint
+  app.post("/sim/challenge", async (req, res) => {
+    try {
+      const { challengeId, request: challengeRequest, response: challengeResponse } = req.body;
+      
+      // Simple challenge validation logic
+      const validateChallenge = (challengeId: string, request: any, response: any) => {
+        switch (challengeId) {
+          case "search-patients-smith":
+            return request.queryParams?.family === "Smith" && 
+                   response?.body?.entry && 
+                   response.body.entry.length > 0;
+          case "create-patient-basic":
+            return response?.status === 201 && 
+                   request.body?.resourceType === "Patient" &&
+                   request.body?.name;
+          case "observation-with-reference":
+            return response?.status === 201 &&
+                   request.body?.resourceType === "Observation" &&
+                   request.body?.subject?.reference?.includes("Patient/") &&
+                   request.body?.valueQuantity?.value;
+          case "transaction-bundle-integrity":
+            return response?.status === 200 &&
+                   request.body?.resourceType === "Bundle" &&
+                   request.body?.entry?.length >= 3;
+          default:
+            return false;
+        }
+      };
+
+      const success = validateChallenge(challengeId, challengeRequest, challengeResponse);
+      
+      res.json({ 
+        success,
+        message: success ? "Challenge completed!" : "Requirements not met",
+        firstTime: true // For simplicity, always treat as first time
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Challenge validation failed" });
+    }
+  });
+
   // FHIR Server endpoints
   app.get("/api/fhir/servers", async (req, res) => {
     try {
