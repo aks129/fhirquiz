@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LabStep from "@/components/lab/lab-step";
+import AccessGate from "@/components/AccessGate";
 import { publishObservation } from "@/lib/fhir";
 import { getSelectedServer, getSelectedPatient } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
@@ -97,7 +98,8 @@ export default function Day3Lab() {
   };
 
   return (
-    <div className="space-y-8">
+    <AccessGate courseSlug="fhir-day3" courseName="Day 3: FHIR Data Operationalization">
+      <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Day 3 Lab: Operationalize</h1>
@@ -380,6 +382,7 @@ export default function Day3Lab() {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </AccessGate>
   );
 }

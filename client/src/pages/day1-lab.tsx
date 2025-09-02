@@ -5,6 +5,7 @@ import ServerSelector from "@/components/fhir/server-selector";
 import BundleUploader from "@/components/fhir/bundle-uploader";
 import ResourceStats from "@/components/fhir/resource-stats";
 import LabStep from "@/components/lab/lab-step";
+import AccessGate from "@/components/AccessGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { exportResourcesCsv } from "@/lib/fhir";
@@ -101,8 +102,9 @@ export default function Day1Lab() {
   const csvExportCompleted = isStepCompleted("csv_export");
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <AccessGate courseSlug="fhir-day1" courseName="Day 1: FHIR Data Ingestion">
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Day 1 Lab: Ingest & Land</h1>
           <p className="text-lg text-muted-foreground">Choose a FHIR server, load Synthea bundles, and export data for analysis</p>
@@ -251,6 +253,7 @@ export default function Day1Lab() {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </AccessGate>
   );
 }

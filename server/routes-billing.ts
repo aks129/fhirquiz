@@ -7,7 +7,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2024-11-20.acacia",
+  apiVersion: "2025-08-27.basil",
 });
 
 const APP_BASE_URL = process.env.REPLIT_DEV_DOMAIN 
@@ -213,6 +213,104 @@ export function registerBillingRoutes(app: Express) {
       res.status(500).json({ error: "Failed to retrieve session" });
     }
   });
+
+  // Get user purchases for access control
+  app.get("/api/billing/purchases", requireUser, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      
+      const response = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/purchases?user_id=eq.${user.id}&select=*`, {
+        headers: {
+          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const purchases = await response.json();
+      res.json(purchases);
+    } catch (error: any) {
+      console.error("Error fetching user purchases:", error);
+      res.status(500).json({ error: "Failed to fetch purchases" });
+    }
+  });
+
+  // Check access to specific course
+  app.get("/api/billing/access/:courseSlug", requireUser, async (req, res) => {
+    try {
+      const { courseSlug } = req.params;
+      const user = (req as any).user;
+      
+      // Get course details
+      const courseResponse = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/courses?slug=eq.${courseSlug}&select=*`, {
+        headers: {
+          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!courseResponse.ok) {
+        return res.status(404).json({ error: 'Course not found' });
+      }
+
+      const courses = await courseResponse.json();
+      if (courses.length === 0) {
+        return res.status(404).json({ error: 'Course not found' });
+      }
+
+      const course = courses[0];
+
+      // If course is free, allow access
+      if (course.is_free) {
+        return res.json({ canAccess: true, reason: 'free_course' });
+      }
+
+      // Check user purchases for required product
+      if (!course.requires_product_sku) {
+        return res.json({ canAccess: false, reason: 'no_product_required' });
+      }
+
+      const purchaseResponse = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/purchases?user_id=eq.${user.id}&product_sku=eq.${course.requires_product_sku}&select=*`, {
+        headers: {
+          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!purchaseResponse.ok) {
+        throw new Error(`HTTP ${purchaseResponse.status}`);
+      }
+
+      const purchases = await purchaseResponse.json();
+      const activePurchase = purchases.find((p: any) => 
+        ['trialing', 'active'].includes(p.status)
+      );
+
+      if (!activePurchase) {
+        return res.json({ canAccess: false, reason: 'no_purchase' });
+      }
+
+      // Check if trial has expired
+      if (activePurchase.status === 'trialing' && activePurchase.trial_ends_at) {
+        const trialEnd = new Date(activePurchase.trial_ends_at);
+        const now = new Date();
+        if (trialEnd <= now) {
+          return res.json({ canAccess: false, reason: 'trial_expired' });
+        }
+      }
+
+      res.json({ canAccess: true, reason: activePurchase.status, purchase: activePurchase });
+    } catch (error: any) {
+      console.error("Error checking course access:", error);
+      res.status(500).json({ error: "Failed to check access" });
+    }
+  });
 }
 
 // Webhook event handlers
@@ -324,9 +422,10 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
   console.log('Processing invoice.paid:', invoice.id);
   
-  if (invoice.subscription) {
+  const subscriptionId = (invoice as any).subscription;
+  if (subscriptionId) {
     try {
-      const response = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/purchases?stripe_subscription_id=eq.${invoice.subscription}`, {
+      const response = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/purchases?stripe_subscription_id=eq.${subscriptionId}`, {
         method: 'PATCH',
         headers: {
           'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -350,9 +449,10 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
   console.log('Processing invoice.payment_failed:', invoice.id);
   
-  if (invoice.subscription) {
+  const subscriptionId = (invoice as any).subscription;
+  if (subscriptionId) {
     try {
-      const response = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/purchases?stripe_subscription_id=eq.${invoice.subscription}`, {
+      const response = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/purchases?stripe_subscription_id=eq.${subscriptionId}`, {
         method: 'PATCH',
         headers: {
           'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,

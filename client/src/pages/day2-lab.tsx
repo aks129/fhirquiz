@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import LabStep from "@/components/lab/lab-step";
+import AccessGate from "@/components/AccessGate";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LabProgress, Artifact } from "@/types/api";
 import { useToast } from "@/hooks/use-toast";
@@ -139,7 +140,8 @@ FROM risk_factors;`
   };
 
   return (
-    <div className="space-y-8">
+    <AccessGate courseSlug="fhir-day2" courseName="Day 2: FHIR Data Transformation & Analytics">
+      <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Day 2 Lab: Transform & Analyze</h1>
@@ -320,6 +322,7 @@ FROM risk_factors;`
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </AccessGate>
   );
 }
