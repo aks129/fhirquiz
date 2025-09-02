@@ -191,6 +191,11 @@ export default function FhirSimulator() {
     revinclude: '',
     summary: ''
   });
+  const [bundleComposer, setBundleComposer] = useState({
+    resourceType: 'Bundle',
+    type: 'transaction',
+    entries: [{ method: 'POST', url: '', resource: {} }]
+  });
 
   // Load persisted data and handle prefill on component mount
   useEffect(() => {
@@ -529,6 +534,184 @@ export default function FhirSimulator() {
       revinclude: '',
       summary: ''
     });
+  };
+
+  // Bundle Composer functions
+  const getBundleTemplate = (type: string) => {
+    const baseBundle = {
+      resourceType: 'Bundle',
+      id: `bundle-${Date.now()}`,
+      type,
+      timestamp: new Date().toISOString(),
+      entry: []
+    };
+
+    if (type === 'transaction' || type === 'batch') {
+      return {
+        ...baseBundle,
+        entry: bundleComposer.entries.map((entry, index) => ({
+          fullUrl: entry.url || `urn:uuid:${Math.random().toString(36).substr(2, 9)}`,
+          request: {
+            method: entry.method,
+            url: entry.url
+          },
+          resource: entry.resource
+        }))
+      };
+    }
+
+    return {
+      ...baseBundle,
+      entry: bundleComposer.entries.map(entry => ({
+        fullUrl: entry.url || `urn:uuid:${Math.random().toString(36).substr(2, 9)}`,
+        resource: entry.resource
+      }))
+    };
+  };
+
+  const addBundleEntry = () => {
+    setBundleComposer(prev => ({
+      ...prev,
+      entries: [...prev.entries, { method: 'POST', url: '', resource: {} }]
+    }));
+  };
+
+  const removeBundleEntry = (index: number) => {
+    setBundleComposer(prev => ({
+      ...prev,
+      entries: prev.entries.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateBundleEntry = (index: number, field: string, value: any) => {
+    setBundleComposer(prev => ({
+      ...prev,
+      entries: prev.entries.map((entry, i) => 
+        i === index ? { ...entry, [field]: value } : entry
+      )
+    }));
+  };
+
+  const loadTransactionTemplate = () => {
+    const patientId = `patient-${Date.now()}`;
+    const encounterId = `encounter-${Date.now()}`;
+    
+    setBundleComposer({
+      resourceType: 'Bundle',
+      type: 'transaction',
+      entries: [
+        {
+          method: 'POST',
+          url: 'Patient',
+          resource: {
+            resourceType: 'Patient',
+            id: patientId,
+            name: [{ given: ['John'], family: 'Doe' }],
+            gender: 'male',
+            birthDate: '1990-01-01'
+          }
+        },
+        {
+          method: 'POST',
+          url: 'Encounter',
+          resource: {
+            resourceType: 'Encounter',
+            id: encounterId,
+            status: 'finished',
+            class: {
+              system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
+              code: 'AMB',
+              display: 'ambulatory'
+            },
+            subject: { reference: `Patient/${patientId}` },
+            period: {
+              start: new Date().toISOString(),
+              end: new Date().toISOString()
+            }
+          }
+        },
+        {
+          method: 'POST',
+          url: 'Observation',
+          resource: {
+            resourceType: 'Observation',
+            status: 'final',
+            category: [{
+              coding: [{
+                system: 'http://terminology.hl7.org/CodeSystem/observation-category',
+                code: 'vital-signs',
+                display: 'Vital Signs'
+              }]
+            }],
+            code: {
+              coding: [{
+                system: 'http://loinc.org',
+                code: '8867-4',
+                display: 'Heart rate'
+              }]
+            },
+            subject: { reference: `Patient/${patientId}` },
+            encounter: { reference: `Encounter/${encounterId}` },
+            effectiveDateTime: new Date().toISOString(),
+            valueQuantity: {
+              value: 72,
+              unit: 'beats/minute',
+              system: 'http://unitsofmeasure.org',
+              code: '/min'
+            }
+          }
+        }
+      ]
+    });
+  };
+
+  const validateBundle = () => {
+    const errors: string[] = [];
+    
+    if (!bundleComposer.type) {
+      errors.push('Bundle type is required');
+    }
+    
+    if (bundleComposer.entries.length === 0) {
+      errors.push('Bundle must have at least one entry');
+    }
+
+    bundleComposer.entries.forEach((entry, index) => {
+      if (!entry.resource || Object.keys(entry.resource).length === 0) {
+        errors.push(`Entry ${index + 1}: Resource is required`);
+      }
+      
+      if ((bundleComposer.type === 'transaction' || bundleComposer.type === 'batch') && !entry.method) {
+        errors.push(`Entry ${index + 1}: HTTP method is required for ${bundleComposer.type} bundles`);
+      }
+    });
+
+    return errors;
+  };
+
+  const sendBundle = () => {
+    const errors = validateBundle();
+    if (errors.length > 0) {
+      toast({
+        title: "Bundle Validation Failed",
+        description: errors.join(', '),
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const bundle = getBundleTemplate(bundleComposer.type);
+    
+    setRequest({
+      method: 'POST',
+      path: '',
+      queryParams: {},
+      headers: { "Accept": "application/fhir+json", "Content-Type": "application/fhir+json" },
+      body: bundle,
+      bodyType: 'json'
+    });
+    
+    handleSendRequest();
   };
 
   // Fetch history
@@ -1156,52 +1339,265 @@ export default function FhirSimulator() {
                 {/* Request Body */}
                 {(request.method === "POST" || request.method === "PUT" || request.method === "PATCH") && (
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">Request Body</Label>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant={request.bodyType === 'json' ? 'default' : 'outline'}
-                          onClick={() => setRequest(prev => ({ ...prev, bodyType: 'json' }))}
-                        >
-                          JSON
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={request.bodyType === 'xml' ? 'default' : 'outline'}
-                          onClick={() => setRequest(prev => ({ ...prev, bodyType: 'xml' }))}
-                        >
-                          XML
-                        </Button>
-                      </div>
-                    </div>
-                    <Textarea
-                      placeholder={request.bodyType === 'json' ? 
-                        'Enter JSON request body... (supports {PATIENT_ID} variables)' : 
-                        'Enter XML request body... (supports {PATIENT_ID} variables)'
-                      }
-                      value={request.body ? (typeof request.body === 'string' ? request.body : formatJson(request.body)) : ""}
-                      onChange={(e) => {
-                        const text = e.target.value;
-                        if (request.bodyType === 'json') {
-                          try {
-                            const body = text ? JSON.parse(text) : undefined;
-                            setRequest(prev => ({ ...prev, body }));
-                          } catch {
-                            // Keep the raw text if it's not valid JSON yet
-                            setRequest(prev => ({ ...prev, body: text }));
+                    <Label className="text-sm font-medium">Request Body</Label>
+                    
+                    <Tabs defaultValue="raw" className="w-full">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="raw">Raw</TabsTrigger>
+                        <TabsTrigger value="bundle">Bundle Composer</TabsTrigger>
+                        <TabsTrigger value="template">Templates</TabsTrigger>
+                      </TabsList>
+                      
+                      {/* Raw Body Editor */}
+                      <TabsContent value="raw" className="space-y-2">
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={request.bodyType === 'json' ? 'default' : 'outline'}
+                            onClick={() => setRequest(prev => ({ ...prev, bodyType: 'json' }))}
+                          >
+                            JSON
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={request.bodyType === 'xml' ? 'default' : 'outline'}
+                            onClick={() => setRequest(prev => ({ ...prev, bodyType: 'xml' }))}
+                          >
+                            XML
+                          </Button>
+                        </div>
+                        <Textarea
+                          placeholder={request.bodyType === 'json' ? 
+                            'Enter JSON request body... (supports {PATIENT_ID} variables)' : 
+                            'Enter XML request body... (supports {PATIENT_ID} variables)'
                           }
-                        } else {
-                          setRequest(prev => ({ ...prev, body: text }));
-                        }
-                      }}
-                      rows={8}
-                      className="font-mono text-sm"
-                      data-testid="body-editor"
-                    />
-                    {request.bodyType === 'json' && request.body && !validateJSON(typeof request.body === 'string' ? request.body : JSON.stringify(request.body)) && (
-                      <p className="text-red-500 text-xs">⚠️ Invalid JSON format</p>
-                    )}
+                          value={request.body ? (typeof request.body === 'string' ? request.body : formatJson(request.body)) : ""}
+                          onChange={(e) => {
+                            const text = e.target.value;
+                            if (request.bodyType === 'json') {
+                              try {
+                                const body = text ? JSON.parse(text) : undefined;
+                                setRequest(prev => ({ ...prev, body }));
+                              } catch {
+                                // Keep the raw text if it's not valid JSON yet
+                                setRequest(prev => ({ ...prev, body: text }));
+                              }
+                            } else {
+                              setRequest(prev => ({ ...prev, body: text }));
+                            }
+                          }}
+                          rows={8}
+                          className="font-mono text-sm"
+                          data-testid="body-editor"
+                        />
+                        {request.bodyType === 'json' && request.body && !validateJSON(typeof request.body === 'string' ? request.body : JSON.stringify(request.body)) && (
+                          <p className="text-red-500 text-xs">⚠️ Invalid JSON format</p>
+                        )}
+                      </TabsContent>
+
+                      {/* Bundle Composer */}
+                      <TabsContent value="bundle" className="space-y-4">
+                        {/* Bundle Type Selection */}
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm font-medium">Bundle Type:</Label>
+                          <Select
+                            value={bundleComposer.type}
+                            onValueChange={(value) => setBundleComposer(prev => ({ ...prev, type: value }))}
+                          >
+                            <SelectTrigger className="w-48">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="transaction">Transaction</SelectItem>
+                              <SelectItem value="batch">Batch</SelectItem>
+                              <SelectItem value="collection">Collection</SelectItem>
+                              <SelectItem value="searchset">Search Set</SelectItem>
+                              <SelectItem value="history">History</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Bundle Entries */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <Label className="text-sm font-medium">Bundle Entries</Label>
+                            <Button size="sm" variant="outline" onClick={addBundleEntry} data-testid="add-bundle-entry">
+                              <Plus className="h-4 w-4 mr-1" />
+                              Add Entry
+                            </Button>
+                          </div>
+                          
+                          <ScrollArea className="h-96 border rounded-lg p-2">
+                            <div className="space-y-4">
+                              {bundleComposer.entries.map((entry, index) => (
+                                <div key={index} className="border rounded-lg p-4 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-medium text-sm">Entry {index + 1}</h4>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => removeBundleEntry(index)}
+                                      disabled={bundleComposer.entries.length === 1}
+                                      data-testid={`remove-entry-${index}`}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                  
+                                  {(bundleComposer.type === 'transaction' || bundleComposer.type === 'batch') && (
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <Label className="text-xs">HTTP Method</Label>
+                                        <Select
+                                          value={entry.method}
+                                          onValueChange={(value) => updateBundleEntry(index, 'method', value)}
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="GET">GET</SelectItem>
+                                            <SelectItem value="POST">POST</SelectItem>
+                                            <SelectItem value="PUT">PUT</SelectItem>
+                                            <SelectItem value="PATCH">PATCH</SelectItem>
+                                            <SelectItem value="DELETE">DELETE</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs">URL</Label>
+                                        <Input
+                                          placeholder="e.g. Patient, Patient/123"
+                                          value={entry.url}
+                                          onChange={(e) => updateBundleEntry(index, 'url', e.target.value)}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  <div>
+                                    <Label className="text-xs">Resource (JSON)</Label>
+                                    <Textarea
+                                      placeholder="Enter FHIR resource JSON..."
+                                      value={typeof entry.resource === 'string' ? entry.resource : JSON.stringify(entry.resource, null, 2)}
+                                      onChange={(e) => {
+                                        try {
+                                          const resource = e.target.value ? JSON.parse(e.target.value) : {};
+                                          updateBundleEntry(index, 'resource', resource);
+                                        } catch {
+                                          updateBundleEntry(index, 'resource', e.target.value);
+                                        }
+                                      }}
+                                      rows={4}
+                                      className="font-mono text-xs"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </div>
+
+                        {/* Bundle Actions */}
+                        <div className="flex gap-2 pt-2 border-t">
+                          <Button
+                            size="sm"
+                            onClick={loadTransactionTemplate}
+                            data-testid="load-transaction-template"
+                          >
+                            Load Transaction Template
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const bundle = getBundleTemplate(bundleComposer.type);
+                              setRequest(prev => ({ ...prev, body: bundle, bodyType: 'json' }));
+                            }}
+                            data-testid="preview-bundle"
+                          >
+                            Preview Bundle
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={sendBundle}
+                            disabled={validateBundle().length > 0}
+                            data-testid="send-bundle"
+                          >
+                            Send Bundle
+                          </Button>
+                        </div>
+
+                        {/* Validation Errors */}
+                        {validateBundle().length > 0 && (
+                          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                            <h4 className="font-medium text-red-900 dark:text-red-300 text-sm mb-1">
+                              Validation Errors:
+                            </h4>
+                            <ul className="text-xs text-red-800 dark:text-red-200 space-y-1">
+                              {validateBundle().map((error, index) => (
+                                <li key={index}>• {error}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </TabsContent>
+
+                      {/* Templates */}
+                      <TabsContent value="template" className="space-y-4">
+                        <div className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                          Quick templates for common FHIR resources and use cases.
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button
+                            variant="outline"
+                            className="h-auto p-4 flex flex-col items-start"
+                            onClick={() => {
+                              const patient = {
+                                resourceType: 'Patient',
+                                name: [{ given: ['John'], family: 'Doe' }],
+                                gender: 'male',
+                                birthDate: '1990-01-01'
+                              };
+                              setRequest(prev => ({ ...prev, body: patient, bodyType: 'json' }));
+                            }}
+                          >
+                            <div className="font-medium">Patient</div>
+                            <div className="text-xs text-gray-500">Basic patient resource</div>
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            className="h-auto p-4 flex flex-col items-start"
+                            onClick={() => {
+                              const observation = {
+                                resourceType: 'Observation',
+                                status: 'final',
+                                code: {
+                                  coding: [{
+                                    system: 'http://loinc.org',
+                                    code: '8867-4',
+                                    display: 'Heart rate'
+                                  }]
+                                },
+                                subject: { reference: 'Patient/example' },
+                                valueQuantity: {
+                                  value: 72,
+                                  unit: 'beats/minute',
+                                  system: 'http://unitsofmeasure.org',
+                                  code: '/min'
+                                }
+                              };
+                              setRequest(prev => ({ ...prev, body: observation, bodyType: 'json' }));
+                            }}
+                          >
+                            <div className="font-medium">Observation</div>
+                            <div className="text-xs text-gray-500">Vital signs observation</div>
+                          </Button>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   </div>
                 )}
 
