@@ -1,9 +1,12 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
+import Landing from "@/pages/landing";
 import Overview from "@/pages/overview";
 import Day1Lab from "@/pages/day1-lab";
 import Day2Lab from "@/pages/day2-lab";
@@ -27,8 +30,52 @@ import Rewards from "@/pages/rewards";
 import Profile from "@/pages/profile";
 import NavigationHeader from "@/components/layout/navigation-header";
 import SidebarNavigation from "@/components/layout/sidebar-navigation";
+import MarketingHeader from "@/components/layout/marketing-header";
+import SEOHead from "@/components/seo-head";
 
 function Router() {
+  const [location] = useLocation();
+  const { user } = useAuth();
+
+  // Determine if we're in marketing mode or app mode
+  const marketingPaths = ["/", "/curriculum", "/pricing", "/docs", "/terms", "/privacy", "/contact"];
+  const isMarketingMode = marketingPaths.includes(location) || (!user && location === "/");
+  
+  // Handle portal routing
+  const isPortalPath = location === "/portal";
+  if (isPortalPath) {
+    if (user) {
+      // Redirect authenticated users to overview
+      window.location.href = "/overview";
+      return null;
+    } else {
+      // Redirect unauthenticated users to auth
+      window.location.href = "/auth";
+      return null;
+    }
+  }
+
+  // Marketing mode layout
+  if (isMarketingMode) {
+    return (
+      <div className="min-h-screen">
+        <SEOHead />
+        <MarketingHeader />
+        <Switch>
+          <Route path="/" component={Landing} />
+          <Route path="/curriculum" component={() => <div>Curriculum page</div>} />
+          <Route path="/pricing" component={() => <div>Pricing page</div>} />
+          <Route path="/docs" component={() => <div>Documentation page</div>} />
+          <Route path="/terms" component={() => <div>Terms page</div>} />
+          <Route path="/privacy" component={() => <div>Privacy page</div>} />
+          <Route path="/contact" component={() => <div>Contact page</div>} />
+          <Route component={NotFound} />
+        </Switch>
+      </div>
+    );
+  }
+
+  // App mode layout (authenticated or app paths)
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       <NavigationHeader />
@@ -36,7 +83,6 @@ function Router() {
         <SidebarNavigation />
         <main className="flex-1 p-6 lg:p-8">
           <Switch>
-            <Route path="/" component={Overview} />
             <Route path="/overview" component={Overview} />
             <Route path="/lab" component={() => { window.location.href = "/lab/day1"; return null; }} />
             <Route path="/lab/day1" component={Day1Lab} />
@@ -59,6 +105,7 @@ function Router() {
             <Route path="/profile" component={Profile} />
             <Route path="/billing/success" component={BillingSuccess} />
             <Route path="/billing/cancel" component={BillingCancel} />
+            <Route path="/auth" component={() => <div>Auth page</div>} />
             <Route component={NotFound} />
           </Switch>
         </main>
@@ -69,12 +116,14 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
   );
 }
 
