@@ -170,6 +170,11 @@ export default function FhirSimulator() {
   
   const [response, setResponse] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [responseHistory, setResponseHistory] = useState<any[]>([]);
+  const [responseViewMode, setResponseViewMode] = useState<'pretty' | 'raw' | 'json' | 'xml'>('pretty');
+  const [responseSearch, setResponseSearch] = useState('');
+  const [diffMode, setDiffMode] = useState(false);
+  const [selectedDiffResponse, setSelectedDiffResponse] = useState<any>(null);
 
   // Load persisted data and handle prefill on component mount
   useEffect(() => {
@@ -192,6 +197,17 @@ export default function FhirSimulator() {
         setEnvVars(parsedEnvVars);
       } catch (error) {
         console.error('Failed to parse saved environment variables:', error);
+      }
+    }
+
+    // Load response history
+    const savedHistory = localStorage.getItem('simulator-response-history');
+    if (savedHistory) {
+      try {
+        const parsedHistory = JSON.parse(savedHistory);
+        setResponseHistory(parsedHistory);
+      } catch (error) {
+        console.error('Failed to parse response history:', error);
       }
     }
 
@@ -231,6 +247,68 @@ export default function FhirSimulator() {
       result = result.replace(pattern, value);
     });
     return result;
+  };
+
+  // Response helper functions
+  const formatResponseSize = (response: any): string => {
+    const content = JSON.stringify(response.body || '');
+    const bytes = new TextEncoder().encode(content).length;
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const parseOperationOutcome = (response: any): string[] => {
+    if (!response.body || response.body.resourceType !== 'OperationOutcome') {
+      return [];
+    }
+    
+    const issues = response.body.issue || [];
+    return issues.map((issue: any) => {
+      const severity = issue.severity || 'unknown';
+      const code = issue.code || 'unknown';
+      const details = issue.details?.text || issue.diagnostics || 'No details provided';
+      return `${severity.toUpperCase()}: ${code} - ${details}`;
+    });
+  };
+
+  const filterResponseContent = (content: string, search: string): string => {
+    if (!search.trim()) return content;
+    
+    try {
+      const lines = content.split('\n');
+      const filteredLines = lines.filter(line => 
+        line.toLowerCase().includes(search.toLowerCase())
+      );
+      return filteredLines.length > 0 ? filteredLines.join('\n') : 'No matches found';
+    } catch {
+      return content;
+    }
+  };
+
+  const addToResponseHistory = (newResponse: any) => {
+    const currentPath = substituteEnvVars(request.path);
+    const historyEntry = {
+      ...newResponse,
+      path: currentPath,
+      timestamp: new Date().toISOString()
+    };
+    
+    setResponseHistory(prev => {
+      // Keep only last 5 responses for the same path
+      const pathHistory = prev.filter(r => r.path === currentPath).slice(-4);
+      const otherHistory = prev.filter(r => r.path !== currentPath).slice(-20); // Keep 20 total
+      const newHistory = [...otherHistory, ...pathHistory, historyEntry];
+      
+      // Persist to localStorage
+      localStorage.setItem('simulator-response-history', JSON.stringify(newHistory));
+      return newHistory;
+    });
+  };
+
+  const getPreviousResponses = (): any[] => {
+    const currentPath = substituteEnvVars(request.path);
+    return responseHistory.filter(r => r.path === currentPath).slice(-5);
   };
 
   // Fetch history
@@ -320,6 +398,7 @@ export default function FhirSimulator() {
     },
     onSuccess: (response) => {
       setResponse(response);
+      addToResponseHistory(response);
       queryClient.invalidateQueries({ queryKey: ["/sim/history"] });
     },
     onError: (error) => {
@@ -946,9 +1025,43 @@ export default function FhirSimulator() {
                         <Clock className="h-3 w-3" />
                         {response.elapsedMs}ms
                       </span>
+                      <span className="text-sm text-gray-500">
+                        {formatResponseSize(response)}
+                      </span>
                     </div>
                   )}
                 </CardTitle>
+                {response && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant={diffMode ? "default" : "outline"}
+                        onClick={() => setDiffMode(!diffMode)}
+                        disabled={getPreviousResponses().length === 0}
+                      >
+                        Diff
+                      </Button>
+                      {diffMode && getPreviousResponses().length > 0 && (
+                        <Select value={selectedDiffResponse?.timestamp || ""} onValueChange={(value) => {
+                          const selected = getPreviousResponses().find(r => r.timestamp === value);
+                          setSelectedDiffResponse(selected);
+                        }}>
+                          <SelectTrigger className="w-48">
+                            <SelectValue placeholder="Select response to compare" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getPreviousResponses().slice(0, -1).map((resp, index) => (
+                              <SelectItem key={resp.timestamp} value={resp.timestamp}>
+                                Response {index + 1} - {new Date(resp.timestamp).toLocaleTimeString()}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 {loading ? (
@@ -957,11 +1070,111 @@ export default function FhirSimulator() {
                     <span className="ml-2">Sending request...</span>
                   </div>
                 ) : response ? (
-                  <ScrollArea className="h-[400px]">
-                    <pre className="text-sm bg-gray-50 dark:bg-gray-900 p-4 rounded-lg overflow-auto">
-                      {formatJson(response.body)}
-                    </pre>
-                  </ScrollArea>
+                  <div className="space-y-4">
+                    {/* Response Headers */}
+                    {response.headers && Object.keys(response.headers).length > 0 && (
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Response Headers</Label>
+                        <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {Object.entries(response.headers).map(([key, value]) => (
+                              <div key={key} className="flex">
+                                <span className="font-medium text-gray-600 dark:text-gray-400 w-1/3">{key}:</span>
+                                <span className="text-gray-900 dark:text-gray-100 w-2/3">{String(value)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* OperationOutcome Error Helper */}
+                    {parseOperationOutcome(response).length > 0 && (
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                        <h4 className="font-medium text-red-900 dark:text-red-300 mb-2">
+                          ⚠️ FHIR OperationOutcome Issues:
+                        </h4>
+                        <ul className="space-y-1 text-sm">
+                          {parseOperationOutcome(response).map((issue, index) => (
+                            <li key={index} className="text-red-800 dark:text-red-200">• {issue}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Response Body Tabs */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-sm font-medium">Response Body</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Search in response..."
+                            value={responseSearch}
+                            onChange={(e) => setResponseSearch(e.target.value)}
+                            className="w-48"
+                          />
+                        </div>
+                      </div>
+                      
+                      <Tabs value={responseViewMode} onValueChange={(value: any) => setResponseViewMode(value)}>
+                        <TabsList className="grid w-full grid-cols-4">
+                          <TabsTrigger value="pretty">Pretty</TabsTrigger>
+                          <TabsTrigger value="raw">Raw</TabsTrigger>
+                          <TabsTrigger value="json">JSON</TabsTrigger>
+                          <TabsTrigger value="xml">XML</TabsTrigger>
+                        </TabsList>
+
+                        <div className="mt-2">
+                          {diffMode && selectedDiffResponse ? (
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <Label className="text-xs text-gray-500 mb-1 block">Current Response</Label>
+                                <ScrollArea className="h-[400px] border rounded">
+                                  <pre className="text-xs bg-gray-50 dark:bg-gray-900 p-3 overflow-auto">
+                                    {filterResponseContent(
+                                      responseViewMode === 'pretty' ? formatJson(response.body) :
+                                      responseViewMode === 'raw' ? JSON.stringify(response.body) :
+                                      responseViewMode === 'json' ? formatJson(response.body) :
+                                      '<?xml version="1.0"?>\n' + formatJson(response.body),
+                                      responseSearch
+                                    )}
+                                  </pre>
+                                </ScrollArea>
+                              </div>
+                              <div>
+                                <Label className="text-xs text-gray-500 mb-1 block">Previous Response ({new Date(selectedDiffResponse.timestamp).toLocaleTimeString()})</Label>
+                                <ScrollArea className="h-[400px] border rounded">
+                                  <pre className="text-xs bg-gray-50 dark:bg-gray-900 p-3 overflow-auto">
+                                    {filterResponseContent(
+                                      responseViewMode === 'pretty' ? formatJson(selectedDiffResponse.body) :
+                                      responseViewMode === 'raw' ? JSON.stringify(selectedDiffResponse.body) :
+                                      responseViewMode === 'json' ? formatJson(selectedDiffResponse.body) :
+                                      '<?xml version="1.0"?>\n' + formatJson(selectedDiffResponse.body),
+                                      responseSearch
+                                    )}
+                                  </pre>
+                                </ScrollArea>
+                              </div>
+                            </div>
+                          ) : (
+                            <TabsContent value={responseViewMode} className="mt-0">
+                              <ScrollArea className="h-[400px] border rounded">
+                                <pre className="text-sm bg-gray-50 dark:bg-gray-900 p-4 overflow-auto">
+                                  {filterResponseContent(
+                                    responseViewMode === 'pretty' ? formatJson(response.body) :
+                                    responseViewMode === 'raw' ? JSON.stringify(response.body) :
+                                    responseViewMode === 'json' ? formatJson(response.body) :
+                                    '<?xml version="1.0"?>\n' + formatJson(response.body),
+                                    responseSearch
+                                  )}
+                                </pre>
+                              </ScrollArea>
+                            </TabsContent>
+                          )}
+                        </div>
+                      </Tabs>
+                    </div>
+                  </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
                     <ArrowDown className="h-8 w-8 mx-auto mb-2 opacity-50" />
