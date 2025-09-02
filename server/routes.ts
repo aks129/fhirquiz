@@ -848,6 +848,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // FHIR Observation endpoint for testing
+  app.post("/api/fhir/observations", async (req, res) => {
+    try {
+      const baseUrl = getCurrentFhirBaseUrl();
+      const observation = req.body;
+      
+      const response = await fetch(`${baseUrl}/Observation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/fhir+json',
+          'Accept': 'application/fhir+json'
+        },
+        body: JSON.stringify(observation)
+      });
+      
+      if (!response.ok) {
+        const errorBody = await response.json();
+        return res.status(response.status).json(errorBody);
+      }
+      
+      const result = await response.json();
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating observation:", error);
+      res.status(500).json({ error: "Failed to create observation" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

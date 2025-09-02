@@ -37,6 +37,16 @@ This application is designed for educational purposes using synthetic patient da
 
 The application uses synthetic patient data for all exercises and demonstrations, ensuring HIPAA compliance and data privacy.
 
+### Testing
+
+Run the test suite to verify FHIR functionality:
+
+```bash
+npx vitest run
+```
+
+**CI Note**: Tests mock FHIR network calls to ensure reliable execution in CI environments without requiring external FHIR servers.
+
 ### Architecture
 
 - **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS
