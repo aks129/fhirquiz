@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Search, Shield, GraduationCap, User, Plus, RotateCcw, ExternalLink, Users } from "lucide-react";
+import { Loader2, Search, Shield, GraduationCap, User, Plus, RotateCcw, ExternalLink, Users, ArrowUpDown, ArrowUp, ArrowDown, Edit3, Check, X } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -24,11 +24,16 @@ interface Profile {
 
 export function UsersTab() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<'created_at' | 'email' | 'role' | 'fhir_points'>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [isPointsDialogOpen, setIsPointsDialogOpen] = useState(false);
   const [newRole, setNewRole] = useState<'student' | 'instructor' | 'admin'>('student');
   const [pointsToAdd, setPointsToAdd] = useState(0);
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [tempRole, setTempRole] = useState<'student' | 'instructor' | 'admin'>('student');
+  const [tempPoints, setTempPoints] = useState(0);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -39,7 +44,30 @@ export function UsersTab() {
     retry: false
   });
 
-  // Update user role mutation
+  // Set user role by email mutation (new endpoint)
+  const setRoleMutation = useMutation({
+    mutationFn: async ({ email, role }: { email: string; role: string }) => {
+      return apiRequest('POST', '/api/admin/users/set-role', { email, role });
+    },
+    onSuccess: (data, variables) => {
+      // Optimistic update worked, invalidate cache
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/profiles'] });
+      toast({ title: "Role updated successfully" });
+      setEditingUser(null);
+    },
+    onError: (error, variables) => {
+      // Rollback optimistic update
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/profiles'] });
+      toast({ 
+        title: "Failed to update role", 
+        description: error.message,
+        variant: "destructive" 
+      });
+      setEditingUser(null);
+    }
+  });
+
+  // Update user role mutation (existing endpoint)
   const updateRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
       return apiRequest('POST', '/api/admin/users/role', { userId, role });
@@ -58,7 +86,45 @@ export function UsersTab() {
     }
   });
 
-  // Add points mutation
+  // Grant points mutation (new endpoint)
+  const grantPointsMutation = useMutation({
+    mutationFn: async ({ email, points }: { email: string; points: number }) => {
+      return apiRequest('POST', '/api/admin/users/grant-points', { email, points });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/profiles'] });
+      toast({ title: "Points granted successfully" });
+    },
+    onError: (error) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/profiles'] });
+      toast({ 
+        title: "Failed to grant points", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Deduct points mutation (new endpoint)
+  const deductPointsMutation = useMutation({
+    mutationFn: async ({ email, points }: { email: string; points: number }) => {
+      return apiRequest('POST', '/api/admin/users/deduct-points', { email, points });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/profiles'] });
+      toast({ title: "Points deducted successfully" });
+    },
+    onError: (error) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/profiles'] });
+      toast({ 
+        title: "Failed to deduct points", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Add points mutation (existing endpoint)
   const addPointsMutation = useMutation({
     mutationFn: async ({ userId, points }: { userId: string; points: number }) => {
       return apiRequest('POST', '/api/admin/users/points', { userId, points });
@@ -94,11 +160,42 @@ export function UsersTab() {
     }
   });
 
-  // Filter profiles based on search
-  const filteredProfiles = profiles.filter((profile: Profile) => 
-    profile.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    profile.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter and sort profiles
+  const filteredProfiles = profiles
+    .filter((profile: Profile) => 
+      profile.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      profile.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a: Profile, b: Profile) => {
+      let aValue: any, bValue: any;
+      
+      switch (sortBy) {
+        case 'created_at':
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
+          break;
+        case 'email':
+          aValue = a.email?.toLowerCase() || '';
+          bValue = b.email?.toLowerCase() || '';
+          break;
+        case 'role':
+          aValue = a.role;
+          bValue = b.role;
+          break;
+        case 'fhir_points':
+          aValue = a.fhir_points || 0;
+          bValue = b.fhir_points || 0;
+          break;
+        default:
+          return 0;
+      }
+      
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -128,6 +225,54 @@ export function UsersTab() {
     }
   };
 
+  // Inline role editing with optimistic UI
+  const handleInlineRoleChange = (profile: Profile, newRole: 'student' | 'instructor' | 'admin') => {
+    if (!profile.email) return;
+    
+    // Optimistic update
+    const optimisticData = profiles.map((p: Profile) => 
+      p.id === profile.id ? { ...p, role: newRole } : p
+    );
+    queryClient.setQueryData(['/api/auth/profiles'], optimisticData);
+    
+    // Send request
+    setRoleMutation.mutate({ email: profile.email, role: newRole });
+  };
+
+  // Inline points management
+  const handleGrantPoints = (profile: Profile, points: number) => {
+    if (!profile.email || points <= 0) return;
+    
+    // Optimistic update
+    const optimisticData = profiles.map((p: Profile) => 
+      p.id === profile.id ? { ...p, fhir_points: (p.fhir_points || 0) + points } : p
+    );
+    queryClient.setQueryData(['/api/auth/profiles'], optimisticData);
+    
+    grantPointsMutation.mutate({ email: profile.email, points });
+  };
+
+  const handleDeductPoints = (profile: Profile, points: number) => {
+    if (!profile.email || points <= 0) return;
+    
+    // Optimistic update
+    const optimisticData = profiles.map((p: Profile) => 
+      p.id === profile.id ? { ...p, fhir_points: Math.max(0, (p.fhir_points || 0) - points) } : p
+    );
+    queryClient.setQueryData(['/api/auth/profiles'], optimisticData);
+    
+    deductPointsMutation.mutate({ email: profile.email, points });
+  };
+
+  const handleSort = (column: 'created_at' | 'email' | 'role' | 'fhir_points') => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('desc');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -141,7 +286,7 @@ export function UsersTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Search */}
+          {/* Search and Sort */}
           <div className="flex items-center gap-4 mb-6">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -153,6 +298,25 @@ export function UsersTab() {
                 data-testid="search-users"
               />
             </div>
+            <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Sort by..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_at">Date Joined</SelectItem>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="role">Role</SelectItem>
+                <SelectItem value="fhir_points">FHIR Points</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              data-testid="sort-order"
+            >
+              {sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+            </Button>
             <div className="text-sm text-gray-500">
               {filteredProfiles.length} user{filteredProfiles.length !== 1 ? 's' : ''}
             </div>
@@ -169,11 +333,59 @@ export function UsersTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead>User</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>FHIR Points</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                    onClick={() => handleSort('email')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Email
+                      {sortBy === 'email' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 opacity-50" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                    onClick={() => handleSort('role')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Role
+                      {sortBy === 'role' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 opacity-50" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                    onClick={() => handleSort('fhir_points')}
+                  >
+                    <div className="flex items-center gap-2">
+                      FHIR Points
+                      {sortBy === 'fhir_points' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 opacity-50" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                    onClick={() => handleSort('created_at')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Joined
+                      {sortBy === 'created_at' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 opacity-50" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right">Quick Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -199,15 +411,90 @@ export function UsersTab() {
                     </TableCell>
                     <TableCell>{profile.email || 'No email'}</TableCell>
                     <TableCell>
-                      <Badge 
-                        variant={getRoleBadgeVariant(profile.role)}
-                        className="flex items-center gap-1 w-fit"
-                      >
-                        {getRoleIcon(profile.role)}
-                        {profile.role}
-                      </Badge>
+                      {editingUser === profile.id ? (
+                        <div className="flex items-center gap-2">
+                          <Select 
+                            value={tempRole} 
+                            onValueChange={(value: any) => setTempRole(value)}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="student">Student</SelectItem>
+                              <SelectItem value="instructor">Instructor</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => {
+                              handleInlineRoleChange(profile, tempRole);
+                            }}
+                            data-testid={`save-role-${profile.id}`}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setEditingUser(null)}
+                            data-testid={`cancel-role-${profile.id}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant={getRoleBadgeVariant(profile.role)}
+                            className="flex items-center gap-1 w-fit"
+                          >
+                            {getRoleIcon(profile.role)}
+                            {profile.role}
+                          </Badge>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingUser(profile.id);
+                              setTempRole(profile.role);
+                            }}
+                            data-testid={`edit-role-${profile.id}`}
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </TableCell>
-                    <TableCell className="font-mono">{profile.fhir_points}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">{profile.fhir_points}</span>
+                        <div className="flex items-center gap-1">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleGrantPoints(profile, 25)}
+                            disabled={!profile.email}
+                            title="Grant 25 points"
+                            data-testid={`grant-points-${profile.id}`}
+                          >
+                            +25
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleDeductPoints(profile, 10)}
+                            disabled={!profile.email || (profile.fhir_points || 0) < 10}
+                            title="Deduct 10 points"
+                            data-testid={`deduct-points-${profile.id}`}
+                          >
+                            -10
+                          </Button>
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {new Date(profile.created_at).toLocaleDateString()}
                     </TableCell>

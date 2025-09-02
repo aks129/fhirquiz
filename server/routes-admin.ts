@@ -5,6 +5,164 @@ export function registerAdminRoutes(app: Express) {
   
   // ===== ADMIN USER MANAGEMENT =====
   
+  // Set user role by email (admin only) - NEW ENDPOINT
+  app.post("/api/admin/users/set-role", requireAdmin, async (req, res) => {
+    try {
+      const { email, role } = req.body;
+      
+      if (!email || !role || !['student', 'instructor', 'admin'].includes(role)) {
+        return res.status(400).json({ error: "Invalid email or role" });
+      }
+
+      // Find user by email and update role
+      const response = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/profiles?email=eq.${email}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({ role })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const updated = await response.json();
+      
+      if (updated.length === 0) {
+        return res.status(404).json({ error: "User not found with that email" });
+      }
+
+      res.json({ success: true, profile: updated[0] });
+    } catch (error) {
+      console.error("Error setting user role:", error);
+      res.status(500).json({ error: "Failed to set user role" });
+    }
+  });
+
+  // Grant points to user (admin only) - NEW ENDPOINT  
+  app.post("/api/admin/users/grant-points", requireAdmin, async (req, res) => {
+    try {
+      const { email, points } = req.body;
+      
+      if (!email || typeof points !== 'number' || points <= 0) {
+        return res.status(400).json({ error: "Invalid email or points amount" });
+      }
+
+      // Get current profile by email
+      const getResponse = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/profiles?email=eq.${email}`, {
+        headers: {
+          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!getResponse.ok) {
+        throw new Error(`Failed to fetch profile: HTTP ${getResponse.status}`);
+      }
+
+      const profiles = await getResponse.json();
+      const currentProfile = profiles[0];
+      
+      if (!currentProfile) {
+        return res.status(404).json({ error: "User not found with that email" });
+      }
+
+      // Grant points (add to existing)
+      const newPoints = (currentProfile.fhir_points || 0) + points;
+      
+      const updateResponse = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/profiles?email=eq.${email}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({ fhir_points: newPoints })
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error(`HTTP ${updateResponse.status}`);
+      }
+
+      const updated = await updateResponse.json();
+      res.json({ 
+        success: true, 
+        profile: updated[0], 
+        pointsGranted: points,
+        newTotal: newPoints
+      });
+    } catch (error) {
+      console.error("Error granting points:", error);
+      res.status(500).json({ error: "Failed to grant points" });
+    }
+  });
+
+  // Deduct points from user (admin only) - NEW ENDPOINT
+  app.post("/api/admin/users/deduct-points", requireAdmin, async (req, res) => {
+    try {
+      const { email, points } = req.body;
+      
+      if (!email || typeof points !== 'number' || points <= 0) {
+        return res.status(400).json({ error: "Invalid email or points amount" });
+      }
+
+      // Get current profile by email
+      const getResponse = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/profiles?email=eq.${email}`, {
+        headers: {
+          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!getResponse.ok) {
+        throw new Error(`Failed to fetch profile: HTTP ${getResponse.status}`);
+      }
+
+      const profiles = await getResponse.json();
+      const currentProfile = profiles[0];
+      
+      if (!currentProfile) {
+        return res.status(404).json({ error: "User not found with that email" });
+      }
+
+      // Deduct points (ensure not below 0)
+      const newPoints = Math.max(0, (currentProfile.fhir_points || 0) - points);
+      
+      const updateResponse = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/profiles?email=eq.${email}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({ fhir_points: newPoints })
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error(`HTTP ${updateResponse.status}`);
+      }
+
+      const updated = await updateResponse.json();
+      res.json({ 
+        success: true, 
+        profile: updated[0], 
+        pointsDeducted: points,
+        newTotal: newPoints
+      });
+    } catch (error) {
+      console.error("Error deducting points:", error);
+      res.status(500).json({ error: "Failed to deduct points" });
+    }
+  });
+  
   // Update user role (admin only)
   app.post("/api/admin/users/role", requireAdmin, async (req, res) => {
     try {
