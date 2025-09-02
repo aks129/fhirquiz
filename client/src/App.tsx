@@ -31,6 +31,7 @@ function Router() {
           <Switch>
             <Route path="/" component={Overview} />
             <Route path="/overview" component={Overview} />
+            <Route path="/lab" component={() => { window.location.href = "/lab/day1"; return null; }} />
             <Route path="/lab/day1" component={Day1Lab} />
             <Route path="/lab/day2" component={Day2Lab} />
             <Route path="/lab/day3" component={Day3Lab} />
