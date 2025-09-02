@@ -1,0 +1,172 @@
+1) Project scaffold
+
+Prompt to Replit AI:
+
+Create a monorepo with:
+
+apps/frontend (React + Vite + Tailwind): pages for Course Overview, Day 1/2/3 labs, Resources, and a simple “Results Gallery.”
+
+apps/backend (FastAPI): endpoints to (a) load local Synthea JSON bundles, (b) proxy GET/POST to a configurable FHIR base URL, (c) save lab artifacts, and (d) generate a sample Observation payload for risk scores.
+
+packages/shared: shared types (TypeScript for FE; pydantic models for BE), and a fhir_schemas folder with minimal dataclasses: Patient, Encounter, Observation, Bundle, plus a CodeableConcept/Coding structure.
+Add docker-compose.yml for local dev (frontend:5173, backend:8000). Provide README.md with quick start commands.
+
+2) Course content & navigation
+
+Prompt to Replit AI:
+
+In apps/frontend, build pages and content:
+
+Overview: Bootcamp goals, prerequisites, and learning outcomes (ingest → transform → publish back to FHIR).
+
+Day 1 Lab: “Ingest & Land.” Step-by-step to:
+
+Choose a public FHIR server (dropdown with prefilled options and a custom URL field).
+
+Load a Synthea bundle into that server via backend /fhir/load-bundle.
+
+Fetch Patient/Encounter/Observation counts via _count queries (show JSON + a simple table).
+
+Export denormalized CSVs (patients, encounters, observations) via backend helpers.
+
+Day 2 Lab: “Transform & Analyze.” Show dbt-style SQL templates and run locally: compute readmission flag + basic risk score.
+
+Day 3 Lab: “Operationalize.” Map risk score to FHIR Observation and POST it back; render links to created resources.
+
+Resources: Link out to Darren Devitt’s “Where to start,” “FHIR Patient Test Data,” and “CodeableConcepts” posts; add a short blurb for each.
+Add a left nav with progress checkmarks. Include “Reset Lab” buttons.
+
+(Use these references when writing copy/tooltips for students.) 
+darrendevitt.com
++2
+darrendevitt.com
++2
+
+3) FHIR config + server list
+
+Prompt to Replit AI:
+
+In apps/backend, add config.py with FHIR_BASE_URL (env-driven), and a /fhir/servers endpoint returning a curated list of working public test servers (e.g., a HAPI public endpoint and Medplum demo). Expose /fhir/ping to verify connectivity, and /fhir/capabilities to GET the server CapabilityStatement. On the frontend, build a Server Selector UI (dropdown + test button) and persist the chosen base URL in local storage.
+
+Seed the server list from reputable public references (document that endpoints may change). Add a warning: “No PII on public servers.” 
+darrendevitt.com
+Medplum
+
+4) Day 1 ingestion: bundles & basics
+
+Prompt to Replit AI:
+
+Implement /fhir/load-bundle (POST): accepts a JSON FHIR Bundle (Synthea) and forwards it to {FHIR_BASE_URL} using a single transaction if supported, else sequential creates. Return a summary of created resource IDs.
+
+Implement /fhir/stats: run simple _search queries to count Patients, Encounters, Observations for a given synthetic patient.
+
+Implement /export/flat: fetch the patient’s Observations and Encounters, flatten references, and export CSVs.
+
+Add frontend steps and UI to:
+
+Upload a sample bundle (provide a small 1-patient JSON in apps/frontend/public/data and instructions on where to download more Synthea bundles).
+
+Show a “FHIR 101” panel explaining IDs vs Identifiers, Bundles, References, and CodeableConcepts (pull language from our Resources page and cite source in the footer). 
+darrendevitt.com
++1
+
+5) Day 2 transforms: dbt-style templates
+
+Prompt to Replit AI:
+
+Add a transforms/ folder (backend) with SQL templates (duckdb or sqlite for simplicity) that:
+
+Create staging tables from the CSV exports.
+
+Derive readmission_30d (binary flag) using encounter dates.
+
+Compute a toy risk_score (e.g., weighted counts of high-risk conditions from Observation codes).
+Provide a CLI endpoint /transforms/run to execute these steps and write outputs to artifacts/.
+
+On the frontend Day 2 page:
+
+Show editable SQL snippets with “Run” buttons and a data preview.
+
+Add a short explainer on how CodeableConcept codes drive analytics (LOINC/SNOMED examples; keep it practical for data engineers). Link to Devitt’s CodeableConcept article in the sidebar. 
+darrendevitt.com
+
+6) Day 3 publish-back: Observation writer
+
+Prompt to Replit AI:
+
+Implement /fhir/publish/observation (POST) that takes { patientId, encounterId?, code, display, value, unit } and creates a valid FHIR Observation:
+
+code as a CodeableConcept with a primary Coding (use a mock code system like http://terminology.hl7.org/CodeSystem/observation-category or LOINC placeholder).
+
+valueQuantity for the risk score.
+
+subject reference to the Patient; optional encounter reference.
+Return the created resource ID and link. Add client-side form + success banner with a direct link to the resource on the server. Include a “What just happened?” panel mapping each field to FHIR elements, calling out CodeableConcept again. 
+darrendevitt.com
+
+7) LLM enrichment (optional)
+
+Prompt to Replit AI:
+
+Add a stub page “LLM Enrichment (Optional)” that:
+
+Explains the idea (summarize Observations/Encounters into a note).
+
+Loads a few sample JSON payloads and renders a prebuilt “AI note” (no external calls).
+Note: This is a placeholder; emphasize PHI safety and that we’re not sending data off-box.
+
+8) Sample data & fixtures
+
+Prompt to Replit AI:
+
+Include in apps/frontend/public/data/:
+
+synthea_patient_small.json (1 patient bundle) and a README explaining where to get larger bundles (Synthea) and why bigger bundles help query practice.
+
+example_observation.json (a valid Observation with CodeableConcept + valueQuantity).
+
+lab_checklist.md (per-day “Done/Not Done” checkboxes, plus expected screenshots to capture for LinkedIn).
+In the README, link to Devitt’s “Patient Test Data” article and explain why older Synthea archives sometimes load more reliably than newer ones. 
+darrendevitt.com
+
+9) Expected outcomes tracking
+
+Prompt to Replit AI:
+
+Add a Results Gallery page where students:
+
+Upload/link 3 screenshots: (1) CapabilityStatement ping OK, (2) Day 2 transform table preview, (3) newly created Observation on the FHIR server.
+
+Auto-generate a short completion summary (markdown) they can paste into LinkedIn with their repo link.
+
+Store artifacts in /artifacts/{username}/ locally and expose a “Download my artifacts” ZIP.
+
+10) Guardrails, tests, docs
+
+Prompt to Replit AI:
+
+Add backend unit tests for: bundle load (transaction vs sequential), Observation creation, and CSV export.
+
+Add a “Troubleshooting FHIR” page: common 401/403, version mismatches (R4 vs STU3 vs R5), missing references, and strategies (retry sequentially, check CapabilityStatement).
+
+Include links to beginner-friendly writeups that explain IDs vs Identifiers, Bundles, References, and Profiles — keep them short and pragmatic. 
+darrendevitt.com
+
+11) Copy polish with cited callouts
+
+Prompt to Replit AI:
+
+Update page copy with short, plain-English callouts:
+
+“Start here” and “small wins first” ethos.
+
+Why CodeableConcept matters for analytics and interoperability.
+
+Why Synthea patient bundles are ideal for learning.
+
+Why public test servers are perfect for bootcamps (and why not to post PII).
+Each callout should include a “Learn more” link to the relevant Darren Devitt post. 
+darrendevitt.com
++2
+darrendevitt.com
++2
