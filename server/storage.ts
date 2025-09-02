@@ -4,7 +4,8 @@ import { type User, type InsertUser, type FhirServer, type InsertFhirServer,
          type Question, type InsertQuestion, type Choice, type InsertChoice,
          type QuizAttempt, type InsertQuizAttempt, type QuizAnswer, type InsertQuizAnswer,
          type ByodSession, type InsertByodSession, type ByodObservation, type InsertByodObservation,
-         type GeneratedApp, type InsertGeneratedApp, type FeatureFlag, type InsertFeatureFlag } from "@shared/schema";
+         type GeneratedApp, type InsertGeneratedApp, type FeatureFlag, type InsertFeatureFlag,
+         type SimulatorHistory, type InsertSimulatorHistory, type SimulatorCollection, type InsertSimulatorCollection } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -74,6 +75,15 @@ export interface IStorage {
   
   // Statistics operations
   getLearnersCount(): Promise<number>;
+  
+  // Simulator operations
+  getSimulatorHistory(sessionId: string): Promise<SimulatorHistory[]>;
+  createSimulatorHistory(history: InsertSimulatorHistory): Promise<SimulatorHistory>;
+  clearSimulatorHistory(sessionId: string): Promise<void>;
+  
+  getSimulatorCollections(sessionId: string): Promise<SimulatorCollection[]>;
+  createSimulatorCollection(collection: InsertSimulatorCollection): Promise<SimulatorCollection>;
+  deleteSimulatorCollection(id: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -91,6 +101,8 @@ export class MemStorage implements IStorage {
   private byodObservations: Map<string, ByodObservation>;
   private generatedApps: Map<string, GeneratedApp>;
   private featureFlags: Map<string, FeatureFlag>;
+  private simulatorHistory: Map<string, SimulatorHistory>;
+  private simulatorCollections: Map<string, SimulatorCollection>;
 
   constructor() {
     this.users = new Map();
@@ -107,6 +119,8 @@ export class MemStorage implements IStorage {
     this.byodObservations = new Map();
     this.generatedApps = new Map();
     this.featureFlags = new Map();
+    this.simulatorHistory = new Map();
+    this.simulatorCollections = new Map();
     
     // Seed with default FHIR servers, quizzes, and feature flags
     this.seedFhirServers();
@@ -688,6 +702,53 @@ export class MemStorage implements IStorage {
     const sessions = this.labProgress.size;
     const baseCount = 2800; // Baseline learners
     return baseCount + sessions;
+  }
+
+  // Simulator History operations
+  async getSimulatorHistory(sessionId: string): Promise<SimulatorHistory[]> {
+    return Array.from(this.simulatorHistory.values())
+      .filter(h => h.sessionId === sessionId || h.userId === sessionId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async createSimulatorHistory(history: InsertSimulatorHistory): Promise<SimulatorHistory> {
+    const newHistory: SimulatorHistory = {
+      id: randomUUID(),
+      ...history,
+      createdAt: new Date(),
+    };
+    this.simulatorHistory.set(newHistory.id, newHistory);
+    return newHistory;
+  }
+
+  async clearSimulatorHistory(sessionId: string): Promise<void> {
+    for (const [id, history] of this.simulatorHistory.entries()) {
+      if (history.sessionId === sessionId || history.userId === sessionId) {
+        this.simulatorHistory.delete(id);
+      }
+    }
+  }
+
+  // Simulator Collections operations
+  async getSimulatorCollections(sessionId: string): Promise<SimulatorCollection[]> {
+    return Array.from(this.simulatorCollections.values())
+      .filter(c => c.sessionId === sessionId || c.userId === sessionId)
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  }
+
+  async createSimulatorCollection(collection: InsertSimulatorCollection): Promise<SimulatorCollection> {
+    const newCollection: SimulatorCollection = {
+      id: randomUUID(),
+      ...collection,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.simulatorCollections.set(newCollection.id, newCollection);
+    return newCollection;
+  }
+
+  async deleteSimulatorCollection(id: string): Promise<void> {
+    this.simulatorCollections.delete(id);
   }
 }
 

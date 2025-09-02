@@ -21,6 +21,7 @@ import { QuizFhir } from "@/pages/quiz-fhir";
 import ByodPage from "@/pages/byod";
 import MiniAppPage from "@/pages/mini-app";
 import DemoPage from "@/pages/demo";
+import FhirSimulator from "@/pages/FhirSimulator";
 import AdminDashboard from "@/pages/AdminDashboard";
 import InstructorDashboard from "@/pages/InstructorDashboard";
 import Catalog from "@/pages/Catalog";
@@ -126,6 +127,7 @@ function Router() {
             <Route path="/demo" component={DemoPage} />
             <Route path="/resources" component={Resources} />
             <Route path="/troubleshooting" component={Troubleshooting} />
+            <Route path="/simulator" component={FhirSimulator} />
             <Route path="/admin" component={AdminDashboard} />
             <Route path="/instructor" component={InstructorDashboard} />
             <Route path="/catalog" component={Catalog} />

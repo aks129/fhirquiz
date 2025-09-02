@@ -8,7 +8,7 @@ import { registerBillingRoutes } from "./routes-billing";
 import { pointsRateLimit, redemptionRateLimit } from "./middleware/rateLimiter";
 import { insertFhirServerSchema, insertLabProgressSchema, insertBundleSchema, insertArtifactSchema,
          insertQuizAttemptSchema, insertQuizAnswerSchema, type QuizData, type QuizSubmission, 
-         type QuizResult } from "@shared/schema";
+         type QuizResult, insertSimulatorHistorySchema, insertSimulatorCollectionSchema } from "@shared/schema";
 import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
@@ -102,6 +102,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching trial status:", error);
       res.status(500).json({ error: "Failed to fetch trial status" });
+    }
+  });
+
+  // FHIR Simulator endpoints
+  app.post("/sim/send", async (req, res) => {
+    try {
+      const { method, path, headers = {}, body } = req.body;
+      const sessionId = req.headers['x-session-id'] as string;
+      const currentFhirBaseUrl = getCurrentFhirBaseUrl();
+      
+      // Construct full URL
+      const url = `${currentFhirBaseUrl}${path}`;
+      
+      const start = Date.now();
+      
+      // Proxy the request to FHIR server
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Accept': 'application/fhir+json',
+          'Content-Type': 'application/fhir+json',
+          ...headers,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      
+      const elapsedMs = Date.now() - start;
+      const responseText = await response.text();
+      let responseBody;
+      try {
+        responseBody = JSON.parse(responseText);
+      } catch {
+        responseBody = responseText;
+      }
+      
+      // Store in history
+      await storage.createSimulatorHistory({
+        sessionId,
+        method,
+        url,
+        path,
+        headers: headers,
+        body: body ? JSON.stringify(body) : null,
+        responseStatus: response.status,
+        responseHeaders: Object.fromEntries(response.headers.entries()),
+        responseBody: responseText,
+        elapsedMs,
+      });
+      
+      res.json({
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        body: responseBody,
+        elapsedMs,
+      });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Request failed",
+        elapsedMs: 0,
+      });
+    }
+  });
+
+  app.get("/sim/history", async (req, res) => {
+    try {
+      const sessionId = req.headers['x-session-id'] as string;
+      const history = await storage.getSimulatorHistory(sessionId);
+      res.json(history);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch history" });
+    }
+  });
+
+  app.post("/sim/history/clear", async (req, res) => {
+    try {
+      const sessionId = req.headers['x-session-id'] as string;
+      await storage.clearSimulatorHistory(sessionId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to clear history" });
+    }
+  });
+
+  app.get("/sim/collections", async (req, res) => {
+    try {
+      const sessionId = req.headers['x-session-id'] as string;
+      const collections = await storage.getSimulatorCollections(sessionId);
+      res.json(collections);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch collections" });
+    }
+  });
+
+  app.post("/sim/collections/save", async (req, res) => {
+    try {
+      const collection = insertSimulatorCollectionSchema.parse(req.body);
+      const sessionId = req.headers['x-session-id'] as string;
+      
+      const saved = await storage.createSimulatorCollection({
+        ...collection,
+        sessionId,
+      });
+      
+      res.json(saved);
+    } catch (error) {
+      res.status(400).json({ 
+        error: error instanceof Error ? error.message : "Invalid collection data" 
+      });
+    }
+  });
+
+  app.delete("/sim/collections/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteSimulatorCollection(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete collection" });
     }
   });
 

@@ -395,6 +395,55 @@ export const insertFeatureFlagSchema = createInsertSchema(featureFlags).omit({
 export type FeatureFlag = typeof featureFlags.$inferSelect;
 export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
 
+// FHIR Simulator Tables
+export const simulatorHistory = pgTable("simulator_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: text("session_id"), // For anonymous users
+  method: text("method").notNull(), // GET, POST, PUT, DELETE
+  url: text("url").notNull(),
+  path: text("path").notNull(),
+  headers: jsonb("headers"), // Request headers
+  body: text("body"), // Request body
+  responseStatus: integer("response_status"),
+  responseHeaders: jsonb("response_headers"),
+  responseBody: text("response_body"),
+  elapsedMs: integer("elapsed_ms"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const simulatorCollections = pgTable("simulator_collections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: text("session_id"), // For anonymous users
+  name: text("name").notNull(),
+  description: text("description"),
+  method: text("method").notNull(),
+  path: text("path").notNull(),
+  headers: jsonb("headers"),
+  body: text("body"),
+  tags: jsonb("tags"), // array of strings for categorization
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSimulatorHistorySchema = createInsertSchema(simulatorHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSimulatorCollectionSchema = createInsertSchema(simulatorCollections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type SimulatorHistory = typeof simulatorHistory.$inferSelect;
+export type InsertSimulatorHistory = z.infer<typeof insertSimulatorHistorySchema>;
+
+export type SimulatorCollection = typeof simulatorCollections.$inferSelect;
+export type InsertSimulatorCollection = z.infer<typeof insertSimulatorCollectionSchema>;
+
 // Quiz API types
 export interface QuizData {
   quiz: Quiz;

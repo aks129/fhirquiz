@@ -79,6 +79,12 @@ export default function SidebarNavigation() {
       icon: "fas fa-book-open",
     },
     {
+      id: "simulator",
+      path: "/simulator",
+      label: "FHIR Simulator",
+      icon: "fas fa-flask",
+    },
+    {
       id: "gallery",
       path: "/gallery",
       label: "Results Gallery",
