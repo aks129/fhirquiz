@@ -8,7 +8,7 @@ import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
 import { extractHealthMetrics, generateMetricsPreview, createFhirObservations, publishObservationsToFhir, generateAppConfig } from "./byod/processor";
-import { getActiveFhirBaseUrl, getCurrentFhirBaseUrl } from "./config";
+import { getActiveFhirBaseUrl, getCurrentFhirBaseUrl, checkLocalFhirHealth, persistConfig, config } from "./config";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware for anonymous users
@@ -766,13 +766,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check local FHIR server health
+  app.get("/ops/check-local-fhir", async (req, res) => {
+    try {
+      const healthResult = await checkLocalFhirHealth();
+      res.json(healthResult);
+    } catch (error) {
+      console.error("Error checking local FHIR health:", error);
+      res.status(500).json({
+        ok: false,
+        status: 0,
+        elapsedMs: 0,
+        error: "Health check failed"
+      });
+    }
+  });
+
   // Set local FHIR usage preference
   app.post("/ops/use-local-fhir", async (req, res) => {
     try {
       const { enabled } = req.body;
       
-      // Update environment variable for current session
+      // Update configuration in memory and persist to file
+      config.USE_LOCAL_FHIR = enabled;
       process.env.USE_LOCAL_FHIR = enabled ? 'true' : 'false';
+      await persistConfig(enabled);
       
       const activeBaseUrl = getCurrentFhirBaseUrl();
       
