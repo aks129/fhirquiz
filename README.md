@@ -64,6 +64,46 @@ curl -X POST http://localhost:5000/ops/reset-class \
 
 **⚠️ WARNING**: Setting `confirm: true` completely wipes the local HAPI FHIR database. All patient data, observations, and resources will be permanently deleted. Use only when starting fresh classes.
 
+#### Commerce Data Seeding
+
+Seed the database with demo products, courses, and badges for the bootcamp platform:
+
+```bash
+# Seed commerce data (products, courses, badges)
+curl -X POST http://localhost:5000/ops/seed-commerce \
+  -H "Content-Type: application/json"
+```
+
+This operation creates:
+
+**Products:**
+- `bootcamp_basic` - FHIR Bootcamp Basic Access ($299)
+- `bootcamp_plus` - FHIR Bootcamp Plus Access ($599) 
+- `course_fhir101` - FHIR 101 Fundamentals Course ($99)
+
+**Courses:**
+- `fhir-101` - Free introductory course
+- `health-data-bootcamp` - Requires `bootcamp_basic` purchase
+- `fhir-deep-dive` - Requires `bootcamp_plus` purchase
+
+**Achievement Badges:**
+- `BYOD_CHAMP` - Bring Your Own Data completion (50 points)
+- `FHIR_LOOP_CLOSER` - Complete FHIR lifecycle (75 points)
+- `QUIZ_MASTER` - High quiz performance (25 points)
+
+**Environment Variables:**
+- `DATABASE_URL` - PostgreSQL connection string (required)
+- `STRIPE_PRICE_IDS_JSON` - JSON mapping of product SKUs to Stripe price IDs (optional)
+
+Example `STRIPE_PRICE_IDS_JSON`:
+```json
+{
+  "bootcamp_basic": "price_1234567890abcdef",
+  "bootcamp_plus": "price_abcdef1234567890", 
+  "course_fhir101": "price_fedcba0987654321"
+}
+```
+
 ## Setup Instructions
 
 ### Prerequisites

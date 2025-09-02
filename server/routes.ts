@@ -989,6 +989,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Seed commerce data (products, courses, badges)
+  app.post("/ops/seed-commerce", async (req, res) => {
+    try {
+      const { spawn } = require('child_process');
+      const path = require('path');
+      
+      // Path to the Python seed script
+      const seedScriptPath = path.join(process.cwd(), 'apps/backend/db/seed.py');
+      
+      // Check if the seed script exists
+      try {
+        await fs.access(seedScriptPath);
+      } catch (error) {
+        return res.status(404).json({
+          error: "Seed script not found",
+          details: `Expected script at: ${seedScriptPath}`,
+          tip: "Make sure apps/backend/db/seed.py exists"
+        });
+      }
+
+      // Run the Python seed script
+      const pythonProcess = spawn('python3', [seedScriptPath], {
+        env: {
+          ...process.env,
+          DATABASE_URL: process.env.DATABASE_URL,
+          STRIPE_PRICE_IDS_JSON: process.env.STRIPE_PRICE_IDS_JSON || '{}'
+        },
+        cwd: process.cwd()
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0) {
+          res.json({
+            success: true,
+            message: "Commerce data seeding completed successfully",
+            details: {
+              productsSeeded: ['bootcamp_basic', 'bootcamp_plus', 'course_fhir101'],
+              coursesSeeded: ['fhir-101', 'health-data-bootcamp', 'fhir-deep-dive'],
+              badgesSeeded: ['BYOD_CHAMP', 'FHIR_LOOP_CLOSER', 'QUIZ_MASTER']
+            },
+            output: stdout
+          });
+        } else {
+          console.error(`Seed process exited with code ${code}`);
+          console.error('STDERR:', stderr);
+          res.status(500).json({
+            error: "Commerce seeding failed",
+            exitCode: code,
+            stderr: stderr,
+            stdout: stdout,
+            tip: "Check database connection and ensure Python dependencies are installed"
+          });
+        }
+      });
+
+      pythonProcess.on('error', (error) => {
+        console.error("Error spawning seed process:", error);
+        res.status(500).json({
+          error: "Failed to start seeding process",
+          details: error.message,
+          tip: "Ensure python3 is installed and accessible"
+        });
+      });
+
+    } catch (error) {
+      console.error("Error in commerce seeding:", error);
+      res.status(500).json({
+        error: "Failed to initialize commerce seeding",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // FHIR Observation endpoint for testing
   app.post("/api/fhir/observations", async (req, res) => {
     try {
