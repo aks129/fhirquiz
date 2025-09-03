@@ -430,7 +430,7 @@ export default function FhirSimulator() {
   });
   
   const [response, setResponse] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [responseHistory, setResponseHistory] = useState<any[]>([]);
   const [responseViewMode, setResponseViewMode] = useState<'pretty' | 'raw' | 'json' | 'xml'>('pretty');
   const [responseSearch, setResponseSearch] = useState('');
@@ -1516,15 +1516,21 @@ export default function FhirSimulator() {
 
   const sendRequestMutation = useMutation({
     mutationFn: (data: RequestData) => {
+      // Add query params to path
+      const queryString = Object.entries(data.queryParams)
+        .filter(([_, value]) => value.trim() !== '')
+        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+        .join('&');
+      
+      const pathWithQuery = queryString ? `${data.path}?${queryString}` : data.path;
+      
       // Substitute environment variables in all text fields
       const processedRequest = {
-        ...data,
-        path: substituteEnvVars(data.path),
-        queryParams: Object.fromEntries(
-          Object.entries(data.queryParams).map(([key, value]) => [key, substituteEnvVars(value)])
-        ),
+        method: data.method,
+        path: substituteEnvVars(pathWithQuery),
         headers: Object.fromEntries(
-          Object.entries(data.headers).map(([key, value]) => [key, substituteEnvVars(value)])
+          Object.entries(data.headers).filter(([_, value]) => value.trim() !== '')
+          .map(([key, value]) => [key, substituteEnvVars(value)])
         ),
         body: data.body ? (typeof data.body === 'string' ? substituteEnvVars(data.body) : data.body) : undefined
       };
@@ -1532,11 +1538,18 @@ export default function FhirSimulator() {
       return apiRequest("POST", "/sim/send", processedRequest);
     },
     onSuccess: (response) => {
+      console.log("FHIR Simulator Response:", response);
       setResponse(response);
       addToResponseHistory(response);
       queryClient.invalidateQueries({ queryKey: ["/sim/history"] });
+      toast({
+        title: "Request Successful",
+        description: `${response.status} ${response.statusText} (${response.elapsedMs}ms)`,
+        variant: response.status < 400 ? "default" : "destructive"
+      });
     },
     onError: (error) => {
+      console.error("FHIR Simulator Error:", error);
       toast({
         title: "Request Failed",
         description: error.message || "Failed to send request",
@@ -1588,11 +1601,11 @@ export default function FhirSimulator() {
       return;
     }
 
-    setLoading(true);
+    setIsLoading(true);
     try {
       await sendRequestMutation.mutateAsync(request);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -2590,7 +2603,7 @@ export default function FhirSimulator() {
                 <div className="flex flex-wrap gap-2 pt-4 border-t">
                   <Button 
                     onClick={handleSendRequest}
-                    disabled={loading || !request.path}
+                    disabled={isLoading || !request.path}
                     data-testid="send-button"
                   >
                     <Play className="h-4 w-4 mr-2" />

@@ -29,10 +29,7 @@ export function ImportWizard({ onComplete }: ImportWizardProps) {
 
   const importMutation = useMutation({
     mutationFn: async (data: { sourceType: string; fileName: string; fileSize: number; rawData: any }) =>
-      apiRequest("/api/byod/import", {
-        method: "POST",
-        body: JSON.stringify(data)
-      }),
+      apiRequest("POST", "/api/byod/import", data),
     onSuccess: (result: ByodImportResult & { sessionId: string }) => {
       setImportResult(result);
       setCurrentStep("preview");
