@@ -1,5 +1,5 @@
 // Global test setup
-import { vi } from 'vitest';
+import { vi, beforeEach, afterEach } from 'vitest';
 
 // Mock environment variables for testing
 process.env.NODE_ENV = 'test';
