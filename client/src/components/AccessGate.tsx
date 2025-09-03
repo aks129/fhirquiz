@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAccess } from "@/hooks/useAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { StartTrialCta } from "@/components/common/CtaButton";
@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useSessionStore } from "@/stores/sessionStore";
 import { 
   Loader2, 
   Lock, 
@@ -17,7 +18,9 @@ import {
   CreditCard, 
   ExternalLink,
   BookOpen,
-  AlertTriangle
+  AlertTriangle,
+  Eye,
+  Play
 } from "lucide-react";
 
 interface AccessGateProps {
@@ -31,6 +34,8 @@ export default function AccessGate({ courseSlug, children, courseName }: AccessG
   const { canAccess, reason, isLoading } = useAccess(courseSlug);
   const { toast } = useToast();
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [, setLocation] = useLocation();
+  const { setDemoMode, setUser, setProfile } = useSessionStore();
 
   // Get billing portal mutation
   const portalMutation = useMutation({
@@ -58,6 +63,144 @@ export default function AccessGate({ courseSlug, children, courseName }: AccessG
   const handleBillingPortal = () => {
     setLoadingAction('portal');
     portalMutation.mutate();
+  };
+
+  // Demo mode activation
+  const handleDemoMode = async () => {
+    try {
+      setLoadingAction('demo');
+      
+      // Create mock demo user
+      const demoUser = {
+        id: 'demo-user-123',
+        email: 'demo@fhirbootcamp.com',
+        user_metadata: {
+          full_name: 'Demo User',
+          avatar_url: null
+        }
+      };
+
+      // Create mock demo profile with synthetic progress
+      const demoProfile = {
+        id: 'demo-user-123',
+        email: 'demo@fhirbootcamp.com',
+        full_name: 'Demo User',
+        avatar_url: null,
+        role: 'student' as const,
+        fhir_points: 750,
+        created_at: '2024-01-01T00:00:00Z'
+      };
+
+      // Set demo mode in session store and localStorage
+      setDemoMode(true);
+      setUser(demoUser);
+      setProfile(demoProfile);
+      localStorage.setItem('demo-mode', 'true');
+
+      // Generate synthetic lab progress
+      await generateDemoProgress();
+
+      toast({
+        title: "Demo Mode Activated",
+        description: "Welcome to the FHIR Bootcamp demo! Explore all features with sample data.",
+        variant: "default"
+      });
+
+      // Refresh the page to trigger access check with demo mode
+      window.location.reload();
+
+    } catch (error) {
+      console.error('Error activating demo mode:', error);
+      toast({
+        title: "Demo Mode Error", 
+        description: "Failed to activate demo mode. Please try again.",
+        variant: "destructive"
+      });
+      setLoadingAction(null);
+    }
+  };
+
+  // Generate demo progress data
+  const generateDemoProgress = async () => {
+    // Simulate API call to create demo progress
+    const demoProgressData = [
+      // Day 1 Progress
+      { labDay: 1, stepName: 'server_setup', completed: true, completedAt: '2024-01-01T10:00:00Z' },
+      { labDay: 1, stepName: 'bundle_upload', completed: true, completedAt: '2024-01-01T10:30:00Z' },
+      { labDay: 1, stepName: 'resource_exploration', completed: true, completedAt: '2024-01-01T11:00:00Z' },
+      
+      // Day 2 Progress  
+      { labDay: 2, stepName: 'data_export', completed: true, completedAt: '2024-01-02T10:00:00Z' },
+      { labDay: 2, stepName: 'sql_transformation', completed: true, completedAt: '2024-01-02T11:00:00Z' },
+      { labDay: 2, stepName: 'risk_calculation', completed: false },
+      
+      // Day 3 Progress
+      { labDay: 3, stepName: 'observation_creation', completed: false },
+      { labDay: 3, stepName: 'fhir_publishing', completed: false },
+      { labDay: 3, stepName: 'mini_app_sharing', completed: false }
+    ];
+
+    // Store in localStorage for demo mode
+    localStorage.setItem('demo-lab-progress', JSON.stringify(demoProgressData));
+    
+    // Also store demo quiz attempts
+    const demoQuizData = [
+      { 
+        quizId: 'day1-quiz', 
+        score: 8, 
+        totalQuestions: 8, 
+        completedAt: '2024-01-01T12:00:00Z',
+        passed: true
+      },
+      { 
+        quizId: 'day2-quiz', 
+        score: 7, 
+        totalQuestions: 10, 
+        completedAt: '2024-01-02T12:00:00Z',
+        passed: true
+      }
+    ];
+    
+    localStorage.setItem('demo-quiz-attempts', JSON.stringify(demoQuizData));
+
+    // Store demo certificates
+    const demoCertificates = [
+      {
+        id: 'cert-day1',
+        course_name: 'FHIR Data Ingestion Mastery',
+        issued_date: '2024-01-01T12:00:00Z',
+        certificate_url: '/demo/certificates/day1.pdf'
+      }
+    ];
+    
+    localStorage.setItem('demo-certificates', JSON.stringify(demoCertificates));
+
+    // Store demo badges
+    const demoBadges = [
+      {
+        id: 'badge-first-bundle',
+        title: 'First Bundle Upload',
+        description: 'Successfully uploaded your first FHIR bundle',
+        icon: '🎯',
+        earned_date: '2024-01-01T10:30:00Z'
+      },
+      {
+        id: 'badge-data-explorer',
+        title: 'Data Explorer',
+        description: 'Explored patient resources and relationships',
+        icon: '🔍',
+        earned_date: '2024-01-01T11:00:00Z'
+      },
+      {
+        id: 'badge-quiz-ace',
+        title: 'Quiz Ace',
+        description: 'Perfect score on Day 1 quiz',
+        icon: '🏆',
+        earned_date: '2024-01-01T12:00:00Z'
+      }
+    ];
+    
+    localStorage.setItem('demo-badges', JSON.stringify(demoBadges));
   };
 
   // If access is granted, render children
@@ -111,10 +254,45 @@ export default function AccessGate({ courseSlug, children, courseName }: AccessG
                   <p className="text-muted-foreground">
                     Please sign in to check your course access and purchases.
                   </p>
-                  <Button size="lg" className="w-full">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Sign In to Continue
-                  </Button>
+                  <div className="space-y-3">
+                    <Link href="/auth">
+                      <Button size="lg" className="w-full">
+                        <BookOpen className="h-4 w-4 mr-2" />
+                        Sign In to Continue
+                      </Button>
+                    </Link>
+                    
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                          Or try our demo
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="lg" 
+                      className="w-full"
+                      onClick={handleDemoMode}
+                      disabled={loadingAction === 'demo'}
+                      data-testid="demo-mode-button"
+                    >
+                      {loadingAction === 'demo' ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Eye className="h-4 w-4 mr-2" />
+                      )}
+                      Try Demo Mode
+                    </Button>
+                    
+                    <p className="text-xs text-muted-foreground">
+                      Demo mode provides full access to course content with sample data. No account required.
+                    </p>
+                  </div>
                 </div>
               )}
 
