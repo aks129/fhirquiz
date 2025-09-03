@@ -46,6 +46,21 @@ export default function Day1Lab() {
   };
 
   const isStepCompleted = (stepName: string) => {
+    // Check demo mode progress first
+    const demoProgress = localStorage.getItem('demo-lab-progress');
+    if (demoProgress) {
+      try {
+        const parsedProgress = JSON.parse(demoProgress);
+        const demoStep = parsedProgress.find((p: any) => p.stepName === stepName && p.labDay === 1);
+        if (demoStep) {
+          return demoStep.completed;
+        }
+      } catch (error) {
+        console.error('Error parsing demo progress:', error);
+      }
+    }
+    
+    // Fallback to regular progress
     return progress.some((p: LabProgress) => p.stepName === stepName && p.completed && p.labDay === 1);
   };
 
@@ -132,7 +147,7 @@ export default function Day1Lab() {
         stepNumber={2}
         title="Load Synthea Bundle"
         description="Upload a synthetic patient bundle to populate your FHIR server with realistic test data."
-        status={bundleUploadCompleted ? "complete" : bundleUploaded ? "in-progress" : "pending"}
+        status={bundleUploadCompleted ? "complete" : (bundleUploaded || selectedServer) ? "in-progress" : "pending"}
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <BundleUploader 
@@ -151,7 +166,7 @@ export default function Day1Lab() {
         stepNumber={3}
         title="Export & Analyze Data"
         description="Export denormalized CSV files for analysis and transformation in Day 2."
-        status={csvExportCompleted ? "complete" : "pending"}
+        status={csvExportCompleted ? "complete" : bundleUploadCompleted ? "in-progress" : "pending"}
       >
         <Card>
           <CardHeader>
@@ -166,7 +181,7 @@ export default function Day1Lab() {
             <div className="space-y-3">
               <Button 
                 onClick={() => exportMutation.mutate("Patient")}
-                disabled={exportMutation.isPending || !bundleUploadCompleted}
+                disabled={exportMutation.isPending || (!bundleUploadCompleted && !selectedServer)}
                 className="w-full flex items-center justify-between p-3 bg-green-50 border border-green-200 text-green-700 hover:bg-green-100"
                 data-testid="button-export-patients"
               >
@@ -179,7 +194,7 @@ export default function Day1Lab() {
               
               <Button 
                 onClick={() => exportMutation.mutate("Encounter")}
-                disabled={exportMutation.isPending || !bundleUploadCompleted}
+                disabled={exportMutation.isPending || (!bundleUploadCompleted && !selectedServer)}
                 className="w-full flex items-center justify-between p-3 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100"
                 data-testid="button-export-encounters"
               >
@@ -192,7 +207,7 @@ export default function Day1Lab() {
               
               <Button 
                 onClick={() => exportMutation.mutate("Observation")}
-                disabled={exportMutation.isPending || !bundleUploadCompleted}
+                disabled={exportMutation.isPending || (!bundleUploadCompleted && !selectedServer)}
                 className="w-full flex items-center justify-between p-3 bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100"
                 data-testid="button-export-observations"
               >

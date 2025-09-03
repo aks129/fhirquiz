@@ -133,8 +133,23 @@ export default function DemoPage() {
   // Set demo mode in localStorage for other components to detect
   useEffect(() => {
     localStorage.setItem('demo_mode', 'true');
+    localStorage.setItem('demo-mode', 'true');
+    
+    // Initialize demo lab progress data 
+    const demoLabProgress = [
+      { labDay: 1, stepName: 'server_setup', completed: false },
+      { labDay: 1, stepName: 'bundle_upload', completed: false },
+      { labDay: 1, stepName: 'csv_export', completed: false },
+      { labDay: 2, stepName: 'sql_analysis', completed: false },
+      { labDay: 2, stepName: 'risk_scoring', completed: false },
+      { labDay: 3, stepName: 'observation_publish', completed: false },
+      { labDay: 3, stepName: 'mini_app', completed: false }
+    ];
+    localStorage.setItem('demo-lab-progress', JSON.stringify(demoLabProgress));
+    
     return () => {
       localStorage.removeItem('demo_mode');
+      localStorage.removeItem('demo-mode');
     };
   }, []);
 

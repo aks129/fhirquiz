@@ -37,6 +37,8 @@ import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 import Security from "@/pages/Security";
 import Help from "@/pages/Help";
+import Curriculum from "@/pages/Curriculum";
+import Docs from "@/pages/docs";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import NavigationHeader from "@/components/layout/navigation-header";
 import SidebarNavigation from "@/components/layout/sidebar-navigation";
@@ -68,10 +70,10 @@ function Router() {
         <MarketingHeader />
         <Switch>
           <Route path="/" component={Landing} />
-          <Route path="/curriculum" component={() => <div>Curriculum page</div>} />
+          <Route path="/curriculum" component={Curriculum} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/demo" component={DemoPage} />
-          <Route path="/docs" component={() => <div>Documentation page</div>} />
+          <Route path="/docs" component={Docs} />
           <Route path="/terms" component={Terms} />
           <Route path="/privacy" component={Privacy} />
           <Route path="/security" component={Security} />

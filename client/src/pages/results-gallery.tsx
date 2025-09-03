@@ -25,6 +25,65 @@ export default function ResultsGallery() {
     queryKey: ["/api/artifacts"],
   });
 
+  // Add demo data if in demo mode
+  const getDemoArtifacts = () => {
+    const demoArtifacts = localStorage.getItem('demo-artifacts');
+    if (demoArtifacts) {
+      try {
+        return JSON.parse(demoArtifacts);
+      } catch (error) {
+        console.error('Error parsing demo artifacts:', error);
+      }
+    }
+
+    // Default demo artifacts
+    return [
+      {
+        id: 'demo-csv-patients',
+        artifactType: 'csv',
+        fileName: 'patients_export.csv',
+        displayName: 'Patient Demographics CSV',
+        description: 'Exported patient demographic data from FHIR bundle upload',
+        fileSize: 2048,
+        downloadUrl: '/demo/artifacts/patients_export.csv',
+        createdAt: '2024-01-01T11:00:00Z'
+      },
+      {
+        id: 'demo-csv-observations',
+        artifactType: 'csv', 
+        fileName: 'observations_export.csv',
+        displayName: 'Clinical Observations CSV',
+        description: 'Patient vital signs and lab results export',
+        fileSize: 15360,
+        downloadUrl: '/demo/artifacts/observations_export.csv',
+        createdAt: '2024-01-01T11:15:00Z'
+      },
+      {
+        id: 'demo-sql-risk-analysis',
+        artifactType: 'sql',
+        fileName: 'risk_scoring_analysis.sql',
+        displayName: 'Patient Risk Analysis SQL',
+        description: 'SQL query for calculating patient readmission risk scores',
+        fileSize: 1024,
+        downloadUrl: '/demo/artifacts/risk_scoring_analysis.sql',
+        createdAt: '2024-01-02T10:30:00Z'
+      },
+      {
+        id: 'demo-fhir-observation',
+        artifactType: 'fhir',
+        fileName: 'risk_score_observation.json',
+        displayName: 'FHIR Risk Score Observation',
+        description: 'Structured FHIR Observation resource with calculated risk scores',
+        fileSize: 512,
+        downloadUrl: '/demo/artifacts/risk_score_observation.json',
+        createdAt: '2024-01-03T14:20:00Z'
+      }
+    ];
+  };
+
+  // Use demo artifacts if available
+  const displayArtifacts = localStorage.getItem('demo-mode') ? getDemoArtifacts() : artifacts;
+
   const getProgressSummary = () => {
     const day1Complete = progress.filter((p: LabProgress) => p.labDay === 1 && p.completed).length;
     const day2Complete = progress.filter((p: LabProgress) => p.labDay === 2 && p.completed).length;
@@ -97,7 +156,7 @@ Bootcamp: Interactive FHIR Learning Platform`;
     }
   };
 
-  const artifactsByType = artifacts.reduce((acc: any, artifact: any) => {
+  const artifactsByType = displayArtifacts.reduce((acc: any, artifact: any) => {
     if (!acc[artifact.artifactType]) acc[artifact.artifactType] = [];
     acc[artifact.artifactType].push(artifact);
     return acc;

@@ -88,7 +88,7 @@ export default function Rewards() {
       setRedeemedRewards(prev => [...prev, rewardCode]);
       toast({
         title: "Reward Redeemed!",
-        description: `You've successfully redeemed this reward for ${data.pointsDeducted} points.`,
+        description: `You've successfully redeemed this reward.`,
         variant: "default",
       });
       
@@ -104,7 +104,11 @@ export default function Rewards() {
     },
   });
 
-  if (!user || !profile) {
+  // Check if in demo mode
+  const isDemoMode = localStorage.getItem('demo-mode') === 'true';
+  const demoProfile = isDemoMode ? { fhir_points: 150 } : null;
+
+  if (!user && !isDemoMode) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-md">
@@ -120,12 +124,42 @@ export default function Rewards() {
     );
   }
 
+  // Use demo profile if in demo mode
+  const displayProfile = isDemoMode ? demoProfile : profile;
+  
+  if (!displayProfile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <Award className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <CardTitle>Loading...</CardTitle>
+            <CardDescription>
+              Loading your rewards and points balance.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
   const handleRedeem = (reward: Reward) => {
-    if (profile.fhir_points < reward.pointCost) {
+    if (displayProfile.fhir_points < reward.pointCost) {
       toast({
-        title: "Insufficient Points",
-        description: `You need ${reward.pointCost} points to redeem this reward. You currently have ${profile.fhir_points} points.`,
+        title: "Insufficient Points", 
+        description: `You need ${reward.pointCost} points to redeem this reward. You currently have ${displayProfile.fhir_points} points.`,
         variant: "destructive",
+      });
+      return;
+    }
+
+    if (isDemoMode) {
+      // Simulate redemption in demo mode
+      setRedeemedRewards(prev => [...prev, reward.id]);
+      toast({
+        title: "Demo Redemption Successful! 🎉",
+        description: `In the real bootcamp, this would deduct ${reward.pointCost} points and provide download access.`,
+        variant: "default",
       });
       return;
     }
@@ -133,7 +167,7 @@ export default function Rewards() {
     redeemMutation.mutate(reward.id);
   };
 
-  const canAfford = (pointCost: number) => profile.fhir_points >= pointCost;
+  const canAfford = (pointCost: number) => displayProfile.fhir_points >= pointCost;
   const isRedeemed = (rewardId: string) => redeemedRewards.includes(rewardId);
 
   return (
@@ -151,7 +185,7 @@ export default function Rewards() {
           <div className="flex items-center justify-center">
             <Badge variant="outline" className="text-lg px-4 py-2">
               <Award className="h-4 w-4 mr-2" />
-              {profile.fhir_points} Points Available
+              {displayProfile.fhir_points} Points Available
             </Badge>
           </div>
         </div>
