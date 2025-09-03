@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { injectAxe, checkA11y } from '@axe-core/playwright';
+import AxeBuilder from '@axe-core/playwright';
 
 test.describe('Lab Workflow E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -169,20 +169,18 @@ test.describe('Lab Workflow E2E Tests', () => {
   });
 
   test('should be accessible', async ({ page }) => {
-    await injectAxe(page);
+    // Accessibility testing with AxeBuilder
     
     // Test Day 1 lab accessibility
     await page.click('[data-testid="nav-day1-lab"]');
-    await checkA11y(page, null, {
-      detailedReport: true,
-      detailedReportOptions: { html: true },
-    });
+    const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
     
     // Test FHIR connection panel
     await page.click('[data-testid="step-1-start"]');
-    await checkA11y(page, '[data-testid="fhir-connection-panel"]', {
-      detailedReport: true,
-      detailedReportOptions: { html: true },
-    });
+    const panelResults = await new AxeBuilder({ page })
+      .include('[data-testid="fhir-connection-panel"]')
+      .analyze();
+    expect(panelResults.violations).toEqual([]);
   });
 });

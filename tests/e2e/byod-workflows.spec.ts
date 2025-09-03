@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { injectAxe, checkA11y } from '@axe-core/playwright';
+import AxeBuilder from '@axe-core/playwright';
 import * as path from 'path';
 
 test.describe('BYOD Workflow E2E Tests', () => {
@@ -226,20 +226,18 @@ test.describe('BYOD Workflow E2E Tests', () => {
   });
 
   test('should be accessible', async ({ page }) => {
-    await injectAxe(page);
+    // Accessibility testing with AxeBuilder
     
     // Test BYOD main page
     await page.click('[data-testid="nav-byod"]');
-    await checkA11y(page, null, {
-      detailedReport: true,
-      detailedReportOptions: { html: true },
-    });
+    const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
     
     // Test file upload interface
     await page.click('[data-testid="select-apple-health"]');
-    await checkA11y(page, '[data-testid="apple-health-uploader"]', {
-      detailedReport: true,
-      detailedReportOptions: { html: true },
-    });
+    const uploadResults = await new AxeBuilder({ page })
+      .include('[data-testid="apple-health-uploader"]')
+      .analyze();
+    expect(uploadResults.violations).toEqual([]);
   });
 });

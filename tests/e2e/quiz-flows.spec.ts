@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { injectAxe, checkA11y } from '@axe-core/playwright';
+import AxeBuilder from '@axe-core/playwright';
 
 test.describe('Quiz System E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -127,20 +127,16 @@ test.describe('Quiz System E2E Tests', () => {
   });
 
   test('should be accessible', async ({ page }) => {
-    await injectAxe(page);
+    // Accessibility testing with AxeBuilder
     
     // Check main quiz page accessibility
     await page.click('[data-testid="nav-quiz-day1"]');
-    await checkA11y(page, null, {
-      detailedReport: true,
-      detailedReportOptions: { html: true },
-    });
+    const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
     
     // Check quiz taking interface
     await page.click('[data-testid="button-start-quiz"]');
-    await checkA11y(page, null, {
-      detailedReport: true,
-      detailedReportOptions: { html: true },
-    });
+    const quizResults = await new AxeBuilder({ page }).analyze();
+    expect(quizResults.violations).toEqual([]);
   });
 });
