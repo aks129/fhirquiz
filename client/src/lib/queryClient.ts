@@ -17,6 +17,14 @@ export async function apiRequest(
   
   const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
   
+  // Add session ID header for all requests
+  let sessionId = localStorage.getItem('fhir-bootcamp-session');
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem('fhir-bootcamp-session', sessionId);
+  }
+  headers['x-session-id'] = sessionId;
+  
   // Add demo mode header if in demo mode
   if (isDemoMode) {
     headers['x-demo-mode'] = 'true';
@@ -43,6 +51,14 @@ export const getQueryFn: <T>(options: {
     const isDemoMode = window.localStorage.getItem('demo-mode') === 'true';
     
     const headers: Record<string, string> = {};
+    
+    // Add session ID header for all requests
+    let sessionId = localStorage.getItem('fhir-bootcamp-session');
+    if (!sessionId) {
+      sessionId = crypto.randomUUID();
+      localStorage.setItem('fhir-bootcamp-session', sessionId);
+    }
+    headers['x-session-id'] = sessionId;
     
     // Add demo mode header if in demo mode
     if (isDemoMode) {
