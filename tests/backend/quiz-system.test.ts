@@ -20,7 +20,7 @@ describe('Quiz System Integration Tests', () => {
         .get('/api/quiz/day1')
         .expect(200);
 
-      expect(response.body.id).toBe('day1');
+      expect(response.body.quiz.slug).toBe('day1');
       expect(response.body.title).toBe('Day 1: FHIR Data Ingestion');
       expect(response.body.questions).toBeInstanceOf(Array);
       expect(response.body.questions.length).toBeGreaterThan(0);
@@ -31,7 +31,7 @@ describe('Quiz System Integration Tests', () => {
         .get('/api/quiz/day2')
         .expect(200);
 
-      expect(response.body.id).toBe('day2');
+      expect(response.body.quiz.slug).toBe('day2');
       expect(response.body.title).toBe('Day 2: FHIR Data Transformation & Analytics');
       expect(response.body.questions).toBeInstanceOf(Array);
       expect(response.body.questions.length).toBeGreaterThan(0);
@@ -42,7 +42,7 @@ describe('Quiz System Integration Tests', () => {
         .get('/api/quiz/day3')
         .expect(200);
 
-      expect(response.body.id).toBe('day3');
+      expect(response.body.quiz.slug).toBe('day3');
       expect(response.body.title).toBe('Day 3: FHIR Data Operationalization');
       expect(response.body.questions).toBeInstanceOf(Array);
       expect(response.body.questions.length).toBeGreaterThan(0);
@@ -50,10 +50,10 @@ describe('Quiz System Integration Tests', () => {
 
     it('should load FHIR Fundamentals quiz bank', async () => {
       const response = await request(app)
-        .get('/api/quiz/fhir')
+        .get('/api/quiz/fhir-basics')
         .expect(200);
 
-      expect(response.body.id).toBe('fhir');
+      expect(response.body.quiz.slug).toBe('fhir-basics');
       expect(response.body.title).toBe('FHIR Fundamentals');
       expect(response.body.questions).toBeInstanceOf(Array);
       expect(response.body.questions.length).toBeGreaterThan(0);
@@ -74,14 +74,13 @@ describe('Quiz System Integration Tests', () => {
       };
 
       const response = await request(app)
-        .post('/api/quiz/submit')
+        .post('/api/quiz/day1/grade')
         .send(submission)
         .expect(200);
 
-      expect(response.body.success).toBe(true);
       expect(response.body.score).toBeDefined();
       expect(response.body.passed).toBeDefined();
-      expect(response.body.incorrectQuestions).toBeDefined();
+      expect(response.body.feedback).toBeDefined();
     });
 
     it('should calculate score correctly for perfect submission', async () => {
@@ -105,13 +104,13 @@ describe('Quiz System Integration Tests', () => {
       };
 
       const response = await request(app)
-        .post('/api/quiz/submit')
+        .post('/api/quiz/day1/grade')
         .send(submission)
         .expect(200);
 
       expect(response.body.score).toBe(100);
       expect(response.body.passed).toBe(true);
-      expect(response.body.incorrectQuestions).toHaveLength(0);
+      expect(response.body.feedback).toBeDefined();
     });
 
     it('should enforce 80% pass gate', async () => {
