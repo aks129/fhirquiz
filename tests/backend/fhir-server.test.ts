@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
-import express from 'express';
+import express, { Express } from 'express';
 import { registerRoutes } from '../../server/routes';
 
 // Mock fetch for all tests
 global.fetch = vi.fn();
 
 describe('FHIR Server Integration Tests', () => {
-  let app: express.Application;
+  let app: Express;
   let server: any;
 
   beforeEach(async () => {

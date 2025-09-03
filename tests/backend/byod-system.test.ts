@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
-import express from 'express';
+import express, { Express } from 'express';
 import { registerRoutes } from '../../server/routes';
 import fs from 'fs/promises';
 import path from 'path';
 
 describe('BYOD System Integration Tests', () => {
-  let app: express.Application;
+  let app: Express;
   let server: any;
 
   beforeEach(async () => {
