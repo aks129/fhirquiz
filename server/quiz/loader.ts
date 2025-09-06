@@ -28,7 +28,9 @@ interface QuizBank {
 }
 
 export async function loadQuizBanks() {
-  const bankDir = path.join(__dirname, 'bank');
+  const bankDir = process.env.NODE_ENV === 'production'
+    ? path.join(process.cwd(), 'dist/quiz/bank')
+    : path.join(__dirname, 'bank');
   const files = ['day1.json', 'day2.json', 'day3.json', 'fhir.json'];
   
   for (const file of files) {

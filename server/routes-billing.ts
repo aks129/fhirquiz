@@ -3,19 +3,34 @@ import Stripe from "stripe";
 import { requireUser } from "./auth";
 import { checkoutRateLimit } from "./middleware/rateLimiter";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+// Initialize Stripe only if secret key is available
+let stripe: Stripe | null = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-08-27.basil",
+  });
 }
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-08-27.basil",
-});
 
 const APP_BASE_URL = process.env.REPLIT_DEV_DOMAIN 
   ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
   : 'http://localhost:5000';
 
 export function registerBillingRoutes(app: Express) {
+  
+  // If Stripe is not configured, register stub routes
+  if (!stripe) {
+    const stubHandler = (req: any, res: any) => {
+      res.status(503).json({ error: "Billing is disabled on this deployment" });
+    };
+    
+    app.post("/api/billing/create-checkout-session", stubHandler);
+    app.get("/api/billing/portal", stubHandler);
+    app.post("/api/billing/webhook", stubHandler);
+    app.get("/api/billing/session/:sessionId", stubHandler);
+    app.get("/api/billing/purchases", stubHandler);
+    app.get("/api/billing/access/:courseSlug", stubHandler);
+    return;
+  }
   
   // Create Stripe Checkout Session
   app.post("/api/billing/create-checkout-session", checkoutRateLimit, requireUser, async (req, res) => {

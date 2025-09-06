@@ -1,0 +1,1 @@
+{"scripts":{"postbuild":"mkdir -p dist/quiz && cp -R server/quiz/bank dist/quiz/bank"}}
