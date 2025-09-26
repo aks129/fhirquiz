@@ -104,11 +104,28 @@ export default function Day1Lab() {
 
   const handleBundleUploadSuccess = (result: any) => {
     setBundleUploaded(true);
-    // Extract patient ID from first resource if available
+    
+    // Enhanced patient ID extraction with better fallback logic
     if (result.resourceIds?.length > 0) {
-      const firstPatientId = result.resourceIds[0];
-      setPatientId(firstPatientId);
-      setSelectedPatient(firstPatientId);
+      // Try to find a patient ID specifically, or use first resource
+      const patientId = result.resourceIds.find((id: string) => 
+        id.match(/^[a-zA-Z0-9-]+$/) // Valid FHIR ID format
+      ) || result.resourceIds[0];
+      
+      setPatientId(patientId);
+      setSelectedPatient(patientId);
+      
+      // Show success message with educational content
+      toast({
+        title: "Bundle Upload Successful! 🎉",
+        description: `Created ${result.resourcesCreated || result.totalResources} resources. Patient ID: ${patientId}`,
+      });
+    } else {
+      // Fallback for cases where resource IDs aren't available
+      toast({
+        title: "Bundle Uploaded Successfully",
+        description: "FHIR resources have been created. Check the Resource Stats for details.",
+      });
     }
   };
 
@@ -145,19 +162,47 @@ export default function Day1Lab() {
       {/* Step 2: Bundle Upload */}
       <LabStep
         stepNumber={2}
-        title="Load Synthea Bundle"
-        description="Upload a synthetic patient bundle to populate your FHIR server with realistic test data."
+        title="Load Patient Bundle"
+        description="Upload synthetic patient data to your FHIR server. Choose between basic or comprehensive sample patients to explore different FHIR resource relationships."
         status={bundleUploadCompleted ? "complete" : (bundleUploaded || selectedServer) ? "in-progress" : "pending"}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <BundleUploader 
-            fhirServerUrl={selectedServer?.baseUrl}
-            onUploadSuccess={handleBundleUploadSuccess}
-          />
-          <ResourceStats 
-            fhirServerUrl={selectedServer?.baseUrl}
-            patientId={patientId}
-          />
+        <div className="space-y-6">
+          {!selectedServer?.baseUrl && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-center space-x-2">
+                <i className="fas fa-exclamation-triangle text-amber-600"></i>
+                <span className="text-sm text-amber-700">Please complete Step 1 (choose a FHIR server) before uploading bundles.</span>
+              </div>
+            </div>
+          )}
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <BundleUploader 
+              fhirServerUrl={selectedServer?.baseUrl}
+              onUploadSuccess={handleBundleUploadSuccess}
+            />
+            <ResourceStats 
+              fhirServerUrl={selectedServer?.baseUrl}
+              patientId={patientId}
+            />
+          </div>
+
+          {bundleUploadCompleted && patientId && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-start space-x-3">
+                <i className="fas fa-check-circle text-green-600 mt-0.5"></i>
+                <div className="flex-1">
+                  <h4 className="font-medium text-green-800 mb-2">🎯 Learning Checkpoint: Understanding FHIR Bundles</h4>
+                  <div className="space-y-2 text-sm text-green-700">
+                    <p>✅ <strong>Bundle Upload Complete!</strong> Your synthetic patient data is now stored in the FHIR server.</p>
+                    <p>📋 <strong>Current Patient ID:</strong> <code className="bg-green-100 px-2 py-1 rounded">{patientId}</code></p>
+                    <p>🔗 <strong>Key FHIR Concept:</strong> Bundles are containers that group related resources together for atomic transactions.</p>
+                    <p>📊 Check the <strong>Resource Stats</strong> to see what types of FHIR resources were created!</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </LabStep>
 
@@ -226,12 +271,16 @@ export default function Day1Lab() {
             )}
 
             {bundleUploadCompleted && (
-              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-start space-x-2">
-                  <i className="fas fa-lightbulb text-amber-500 mt-0.5"></i>
-                  <div>
-                    <p className="text-xs text-amber-700 font-medium">Pro Tip</p>
-                    <p className="text-xs text-amber-600">These CSV exports will be used in Day 2 for SQL-based risk analysis and readmission calculations.</p>
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <i className="fas fa-lightbulb text-blue-600 mt-0.5"></i>
+                  <div className="flex-1">
+                    <h4 className="font-medium text-blue-800 mb-2">🎯 Learning Focus: FHIR to Tabular Data</h4>
+                    <div className="space-y-2 text-sm text-blue-700">
+                      <p>🔄 <strong>Data Transformation:</strong> Converting hierarchical FHIR resources into flat CSV tables for analysis</p>
+                      <p>📊 <strong>Next Steps:</strong> These exports will be used in Day 2 for SQL-based risk analysis and readmission calculations</p>
+                      <p>🔍 <strong>Key Concept:</strong> Notice how FHIR's flexible JSON structure gets "flattened" into traditional database columns</p>
+                    </div>
                   </div>
                 </div>
               </div>
