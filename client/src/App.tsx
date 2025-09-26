@@ -20,6 +20,7 @@ import { QuizDay3 } from "@/pages/quiz-day3";
 import { QuizFhir } from "@/pages/quiz-fhir";
 import StudyMode from "@/pages/study-mode";
 import CompetencyStudy from "@/pages/competency-study";
+import PracticeExam from "@/pages/practice-exam";
 import ByodPage from "@/pages/byod";
 import MiniAppPage from "@/pages/mini-app";
 import DemoPage from "@/pages/demo";
@@ -134,6 +135,7 @@ function Router() {
             <Route path="/quiz/implementation-guides" component={() => <QuizFhir slug="implementation-guides" />} />
             <Route path="/study" component={StudyMode} />
             <Route path="/study/:slug" component={CompetencyStudy} />
+            <Route path="/practice-exam" component={PracticeExam} />
             <Route path="/mini-app/:id" component={MiniAppPage} />
             <Route path="/demo" component={DemoPage} />
             <Route path="/resources" component={Resources} />

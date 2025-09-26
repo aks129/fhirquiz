@@ -734,6 +734,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate practice exam with proper question distribution
+  app.get("/api/practice-exam/generate", async (req, res) => {
+    try {
+      // Official exam distribution percentages
+      const competencyDistribution = {
+        "implementation-guides": { min: 4, max: 8, target: 6 }, // 4-8%, target 6% = 3 questions
+        "api-behavior": { min: 19, max: 33, target: 26 }, // 19-33%, target 26% = 13 questions  
+        "resource-model": { min: 25, max: 33, target: 29 }, // 25-33%, target 29% = 14-15 questions
+        "implementation": { min: 19, max: 29, target: 24 }, // 19-29%, target 24% = 12 questions
+        "troubleshooting": { min: 13, max: 19, target: 16 } // 13-19%, target 16% = 8 questions
+      };
+
+      // Calculate questions per competency for 50 total questions
+      // Must stay within official competency ranges
+      const questionCounts = {
+        "implementation-guides": 4,   // 8% (4-8% range)
+        "api-behavior": 13,          // 26% (19-33% range)
+        "resource-model": 12,        // 24% - Note: This is below the 25% minimum, but limited by available questions
+        "implementation": 12,        // 24% (19-29% range)
+        "troubleshooting": 9         // 18% (13-19% range)
+      };
+
+      const examQuestions = [];
+      let questionOrder = 1;
+
+      // Sample questions from each competency area
+      for (const [competencySlug, count] of Object.entries(questionCounts)) {
+        const competencyQuiz = await storage.getQuizBySlug(competencySlug);
+        if (!competencyQuiz) {
+          console.warn(`Quiz not found for competency: ${competencySlug}`);
+          continue;
+        }
+
+        const allQuestions = await storage.getQuestionsByQuizId(competencyQuiz.id);
+        
+        // Shuffle and sample the required number of questions
+        const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
+        const selectedQuestions = shuffled.slice(0, count);
+
+        // Add choices to selected questions
+        const questionsWithChoices = await Promise.all(
+          selectedQuestions.map(async (question) => {
+            const choices = await storage.getChoicesByQuestionId(question.id);
+            // Remove is_correct from choices for security
+            const sanitizedChoices = choices.map(({ isCorrect, ...choice }) => choice);
+            return { 
+              ...question, 
+              choices: sanitizedChoices,
+              order: questionOrder++,
+              competencyArea: competencySlug
+            };
+          })
+        );
+
+        examQuestions.push(...questionsWithChoices);
+      }
+
+      // Shuffle the final exam questions to mix competency areas
+      const shuffledExam = examQuestions.sort(() => Math.random() - 0.5);
+      
+      // Re-assign order after shuffling
+      shuffledExam.forEach((question, index) => {
+        question.order = index + 1;
+      });
+
+      // Create exam metadata
+      const examData = {
+        quiz: {
+          id: `practice-exam-${Date.now()}`,
+          slug: "practice-exam",
+          title: "FHIR Implementor Foundation Practice Exam",
+          description: "Full-length 50-question practice exam simulating the official HL7 FHIR Implementor Foundation certification exam",
+          timeLimit: 120, // 2 hours
+          passingScore: 70,
+          quizType: "exam",
+          questionCount: 50,
+          competencyDistribution: questionCounts
+        },
+        questions: shuffledExam
+      };
+
+      res.json(examData);
+    } catch (error) {
+      console.error("Error generating practice exam:", error);
+      res.status(500).json({ error: "Failed to generate practice exam" });
+    }
+  });
+
+  // Grade practice exam - special handling for generated exams
+  app.post("/api/quiz/practice-exam/grade", async (req, res) => {
+    try {
+      const submission: QuizSubmission = req.body;
+      
+      // For practice exams, we need to look up the correct answers from the original quizzes
+      let correctAnswers = 0;
+      const feedback = [];
+      
+      for (const answer of submission.answers) {
+        // Find the original question by looking through all competency quizzes
+        let questionFound = false;
+        let correctChoice = null;
+        let originalQuestion = null;
+        
+        const competencyQuizzes = ['implementation-guides', 'api-behavior', 'resource-model', 'implementation', 'troubleshooting'];
+        
+        for (const competencySlug of competencyQuizzes) {
+          const quiz = await storage.getQuizBySlug(competencySlug);
+          if (!quiz) continue;
+          
+          const questions = await storage.getQuestionsByQuizId(quiz.id);
+          originalQuestion = questions.find(q => q.id === answer.questionId);
+          
+          if (originalQuestion) {
+            const choices = await storage.getChoicesByQuestionId(originalQuestion.id);
+            correctChoice = choices.find(c => c.isCorrect);
+            questionFound = true;
+            break;
+          }
+        }
+        
+        if (!questionFound || !correctChoice || !originalQuestion) {
+          console.warn(`Question not found for answer: ${answer.questionId}`);
+          continue;
+        }
+        
+        const isCorrect = answer.choiceId === correctChoice.id;
+        if (isCorrect) correctAnswers++;
+        
+        // Find the selected choice text
+        const allChoices = await storage.getChoicesByQuestionId(originalQuestion.id);
+        const selectedChoice = allChoices.find(c => c.id === answer.choiceId);
+        
+        feedback.push({
+          questionId: originalQuestion.id,
+          questionText: originalQuestion.questionText,
+          selectedChoice: selectedChoice?.choiceText || "No answer selected",
+          correctChoice: correctChoice.choiceText || "Unknown",
+          isCorrect,
+          explanation: originalQuestion.explanation || ""
+        });
+      }
+      
+      const score = Math.round((correctAnswers / submission.answers.length) * 100);
+      const passed = score >= 70; // Practice exam passing score is 70%
+      
+      const result: QuizResult = {
+        score,
+        passed,
+        correctAnswers,
+        totalQuestions: submission.answers.length,
+        duration: submission.duration,
+        feedback
+      };
+
+      // Store the attempt for progress tracking
+      try {
+        const sessionId = req.headers['x-session-id'] as string;
+        if (sessionId) {
+          await storage.createQuizAttempt({
+            userId: null, // No user ID for anonymous
+            sessionId,
+            quizId: "practice-exam", // Use practice-exam as quiz ID
+            score,
+            passed,
+            duration: submission.duration,
+            startedAt: new Date(),
+            completedAt: new Date()
+          });
+        }
+      } catch (error) {
+        console.warn("Failed to record practice exam attempt:", error);
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error grading practice exam:", error);
+      res.status(500).json({ error: "Failed to grade practice exam" });
+    }
+  });
+
   app.post("/api/quiz/:slug/grade", async (req, res) => {
     try {
       const { slug } = req.params;

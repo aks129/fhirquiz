@@ -42,6 +42,13 @@ export default function SidebarNavigation() {
       description: "HL7 FHIR Certification Prep",
     },
     {
+      id: "practice-exam",
+      path: "/practice-exam",
+      label: "📝 Practice Exam",
+      icon: "fas fa-award",
+      description: "Full-length 50-question certification simulation",
+    },
+    {
       id: "day1",
       path: "/lab/day1", 
       label: "Day 1: Ingest & Land",
