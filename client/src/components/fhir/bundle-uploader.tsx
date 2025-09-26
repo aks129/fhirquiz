@@ -7,8 +7,9 @@ import { uploadBundle } from "@/lib/fhir";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-// Cache for preloaded Synthea data
+// Cache for preloaded sample data
 let preloadedSyntheaData: any = null;
+let preloadedCarl856Data: any = null;
 let isPreloading = false;
 
 interface BundleUploaderProps {
@@ -25,25 +26,33 @@ export default function BundleUploader({ fhirServerUrl, onUploadSuccess }: Bundl
   // Debug: Log the fhirServerUrl prop
   console.log('BundleUploader fhirServerUrl:', fhirServerUrl);
 
-  // Preload Synthea data when component mounts
+  // Preload sample data when component mounts
   useEffect(() => {
-    const preloadSyntheaData = async () => {
-      if (preloadedSyntheaData || isPreloading) return;
+    const preloadSampleData = async () => {
+      if ((preloadedSyntheaData && preloadedCarl856Data) || isPreloading) return;
       
       isPreloading = true;
       try {
-        console.log('🔄 Preloading Synthea data...');
-        const response = await fetch("/data/synthea_patient_small.json");
-        preloadedSyntheaData = await response.json();
-        console.log('✅ Synthea data preloaded successfully');
+        console.log('🔄 Preloading sample data...');
+        
+        // Load both sample files
+        const [syntheaResponse, carl856Response] = await Promise.all([
+          fetch("/data/synthea_patient_small.json"),
+          fetch("/data/carl856_sample_patient.json")
+        ]);
+        
+        preloadedSyntheaData = await syntheaResponse.json();
+        preloadedCarl856Data = await carl856Response.json();
+        
+        console.log('✅ Sample data preloaded successfully');
       } catch (error) {
-        console.error('❌ Failed to preload Synthea data:', error);
+        console.error('❌ Failed to preload sample data:', error);
       } finally {
         isPreloading = false;
       }
     };
 
-    preloadSyntheaData();
+    preloadSampleData();
   }, []);
 
   const uploadMutation = useMutation({
@@ -125,22 +134,34 @@ export default function BundleUploader({ fhirServerUrl, onUploadSuccess }: Bundl
     }
   };
 
-  const handleLoadSampleData = async () => {
+  const handleLoadSampleData = async (sampleType: 'synthea' | 'carl856') => {
     try {
       let bundle;
+      let fileName;
       
-      if (preloadedSyntheaData) {
-        // Use preloaded data for instant loading
-        console.log('📦 Using preloaded Synthea data');
-        bundle = preloadedSyntheaData;
+      if (sampleType === 'synthea') {
+        if (preloadedSyntheaData) {
+          console.log('📦 Using preloaded Synthea data');
+          bundle = preloadedSyntheaData;
+        } else {
+          console.log('🔄 Fetching Synthea data (preload not available)');
+          const response = await fetch("/data/synthea_patient_small.json");
+          bundle = await response.json();
+        }
+        fileName = "synthea_patient_small.json";
       } else {
-        // Fallback to fetch if preloading failed
-        console.log('🔄 Fetching Synthea data (preload not available)');
-        const response = await fetch("/data/synthea_patient_small.json");
-        bundle = await response.json();
+        if (preloadedCarl856Data) {
+          console.log('📦 Using preloaded Carl856 data');
+          bundle = preloadedCarl856Data;
+        } else {
+          console.log('🔄 Fetching Carl856 data (preload not available)');
+          const response = await fetch("/data/carl856_sample_patient.json");
+          bundle = await response.json();
+        }
+        fileName = "carl856_sample_patient.json";
       }
       
-      uploadMutation.mutate({ bundle, fileName: "synthea_patient_small.json" });
+      uploadMutation.mutate({ bundle, fileName });
     } catch (error) {
       toast({
         title: "Error",
@@ -171,57 +192,90 @@ export default function BundleUploader({ fhirServerUrl, onUploadSuccess }: Bundl
           />
         </div>
 
-        <div className="flex space-x-3">
+        <div className="space-y-3">
           <Button 
             onClick={handleUpload}
             disabled={!selectedFile || uploadMutation.isPending || !fhirServerUrl}
-            className="flex-1"
+            className="w-full"
             data-testid="button-upload-bundle"
           >
             <i className="fas fa-upload mr-2"></i>
-            {uploadMutation.isPending ? "Uploading..." : "Upload Bundle"}
+            {uploadMutation.isPending ? "Uploading..." : "Upload Custom Bundle"}
           </Button>
           
-          <Button 
-            onClick={handleLoadSampleData}
-            variant="outline"
-            disabled={uploadMutation.isPending || !fhirServerUrl}
-            data-testid="button-load-sample"
-            title={!fhirServerUrl ? "Please select and test a FHIR server connection first" : "Load sample Synthea data"}
-          >
-            {preloadedSyntheaData ? (
-              <>
-                <i className="fas fa-bolt mr-2 text-green-600"></i>
-                Load Sample (Ready)
-              </>
-            ) : isPreloading ? (
-              <>
-                <i className="fas fa-spinner fa-spin mr-2"></i>
-                Loading...
-              </>
-            ) : (
-              "Load Sample"
-            )}
-            {!fhirServerUrl && <span className="ml-1 text-xs">(Server needed)</span>}
-          </Button>
+          <div className="text-center text-sm text-muted-foreground">
+            OR choose a sample patient:
+          </div>
+          
+          <div className="grid grid-cols-1 gap-2">
+            <Button 
+              onClick={() => handleLoadSampleData('synthea')}
+              variant="outline"
+              disabled={uploadMutation.isPending || !fhirServerUrl}
+              data-testid="button-load-synthea-sample"
+              className="justify-start text-left"
+              title={!fhirServerUrl ? "Please select and test a FHIR server connection first" : "Load basic synthetic patient data"}
+            >
+              <div className="flex items-center w-full">
+                <i className="fas fa-user mr-3 text-blue-500"></i>
+                <div className="flex-1">
+                  <div className="font-medium">John Smith (Basic Sample)</div>
+                  <div className="text-xs text-muted-foreground">Simple patient with basic encounter data</div>
+                </div>
+                {preloadedSyntheaData && <i className="fas fa-check text-green-500 ml-2"></i>}
+              </div>
+            </Button>
+            
+            <Button 
+              onClick={() => handleLoadSampleData('carl856')}
+              variant="outline"
+              disabled={uploadMutation.isPending || !fhirServerUrl}
+              data-testid="button-load-carl856-sample"
+              className="justify-start text-left"
+              title={!fhirServerUrl ? "Please select and test a FHIR server connection first" : "Load comprehensive patient with complex medical history"}
+            >
+              <div className="flex items-center w-full">
+                <i className="fas fa-user-md mr-3 text-purple-500"></i>
+                <div className="flex-1">
+                  <div className="font-medium">Carl856 Powlowski563 (Comprehensive)</div>
+                  <div className="text-xs text-muted-foreground">Complex patient with conditions, medications, and care team</div>
+                </div>
+                {preloadedCarl856Data && <i className="fas fa-check text-green-500 ml-2"></i>}
+              </div>
+            </Button>
+          </div>
+          
+          {isPreloading && (
+            <div className="text-center text-sm text-muted-foreground">
+              <i className="fas fa-spinner fa-spin mr-2"></i>
+              Loading sample data...
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className="bg-gray-50 p-3 rounded">
-            <span className="text-gray-600">Sample data available:</span>
-            <div className="text-primary text-xs mt-1">1 synthetic patient with full medical history</div>
-          </div>
-          <div className="bg-blue-50 p-3 rounded">
-            <span className="text-gray-600">Need more data?</span>
-            <a 
-              href="https://synthetichealth.github.io/synthea/" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline text-xs block mt-1"
-              data-testid="link-synthea-download"
-            >
-              Download from Synthea →
-            </a>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <i className="fas fa-lightbulb text-blue-600 mt-0.5"></i>
+            <div className="flex-1">
+              <h4 className="font-medium text-blue-900 mb-2">Sample Patient Learning Guide</h4>
+              <div className="space-y-2 text-sm text-blue-800">
+                <div>• <strong>Basic Sample</strong>: Start here to learn FHIR Patient and Encounter basics</div>
+                <div>• <strong>Comprehensive Sample</strong>: Explore complex relationships between Patient, Conditions, Medications, and CareTeam</div>
+                <div>• Upload succeeds? Check the <strong>Resource Stats</strong> to see what was created!</div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-blue-200">
+                <span className="text-blue-700 font-medium">Need more data? </span>
+                <a 
+                  href="https://synthetichealth.github.io/synthea/" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                  data-testid="link-synthea-download"
+                >
+                  Generate your own at Synthea →
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 
