@@ -286,95 +286,246 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // FHIR connectivity testing
+  // FHIR connectivity testing with enhanced error handling and timeout
   app.post("/api/fhir/ping", async (req, res) => {
     try {
       const { baseUrl: userSelectedUrl } = req.body;
       const activeBaseUrl = getActiveFhirBaseUrl(userSelectedUrl);
       const start = Date.now();
       
-      // Test basic connectivity
-      const response = await fetch(`${activeBaseUrl}/metadata`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/fhir+json',
-        },
-      });
+      // Enhanced connectivity test with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
-      const responseTime = Date.now() - start;
-      
-      if (!response.ok) {
-        return res.json({
+      try {
+        const response = await fetch(`${activeBaseUrl}/metadata`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/fhir+json',
+            'User-Agent': 'FHIR-Bootcamp/1.0',
+          },
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        const responseTime = Date.now() - start;
+        
+        if (!response.ok) {
+          let errorDetails = `HTTP ${response.status}`;
+          
+          // Try to get more detailed error information
+          try {
+            const errorText = await response.text();
+            if (errorText.trim()) {
+              const errorJson = JSON.parse(errorText);
+              if (errorJson.issue && errorJson.issue.length > 0) {
+                errorDetails += `: ${errorJson.issue[0].details?.text || errorJson.issue[0].diagnostics || 'FHIR operation outcome error'}`;
+              } else {
+                errorDetails += `: ${errorText.substring(0, 200)}`;
+              }
+            }
+          } catch (e) {
+            // If error parsing fails, stick with status code
+          }
+          
+          return res.json({
+            success: false,
+            responseTime,
+            error: errorDetails,
+            statusCode: response.status,
+            serverUrl: activeBaseUrl,
+          });
+        }
+
+        const capabilities = await response.json();
+        
+        res.json({
+          success: true,
+          responseTime,
+          fhirVersion: capabilities.fhirVersion || "Unknown",
+          serverSoftware: capabilities.software?.name || "Unknown",
+          serverImplementation: capabilities.implementation?.description || "Unknown",
+          serverUrl: activeBaseUrl,
+          supportedResources: capabilities.rest?.[0]?.resource?.map((r: any) => r.type) || [],
+        });
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        const responseTime = Date.now() - start;
+        
+        let errorMessage = "Connection failed";
+        if (fetchError instanceof Error) {
+          if (fetchError.name === 'AbortError') {
+            errorMessage = "Connection timeout (server took too long to respond)";
+          } else if (fetchError.message.includes('ENOTFOUND') || fetchError.message.includes('ECONNREFUSED')) {
+            errorMessage = `Cannot reach server at ${activeBaseUrl} - check URL and network connectivity`;
+          } else if (fetchError.message.includes('certificate') || fetchError.message.includes('SSL')) {
+            errorMessage = "SSL/TLS certificate error - server certificate may be invalid";
+          } else {
+            errorMessage = fetchError.message;
+          }
+        }
+        
+        res.json({
           success: false,
           responseTime,
-          error: `Server responded with ${response.status}`,
+          error: errorMessage,
+          serverUrl: activeBaseUrl,
         });
       }
-
-      const capabilities = await response.json();
-      
-      res.json({
-        success: true,
-        responseTime,
-        fhirVersion: capabilities.fhirVersion || "Unknown",
-        capabilities,
-      });
     } catch (error) {
       res.json({
         success: false,
         responseTime: 0,
-        error: error instanceof Error ? error.message : "Connection failed",
+        error: error instanceof Error ? error.message : "Ping setup failed",
+        serverUrl: "unknown",
       });
     }
   });
 
-  // Bundle upload and processing
+  // Bundle upload and processing with enhanced error handling
   app.post("/api/fhir/load-bundle", async (req, res) => {
     try {
       const { bundle, fhirServerUrl: userSelectedUrl, fileName } = req.body;
       const sessionId = req.headers['x-session-id'] as string;
       const activeFhirServerUrl = getActiveFhirBaseUrl(userSelectedUrl);
       
-      // Post bundle to FHIR server
-      const response = await fetch(activeFhirServerUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/fhir+json',
-          'Accept': 'application/fhir+json',
-        },
-        body: JSON.stringify(bundle),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
+      // Validate bundle
+      if (!bundle || bundle.resourceType !== 'Bundle') {
         return res.status(400).json({
           success: false,
-          error: `FHIR server error: ${response.status} - ${errorText}`,
+          error: "Invalid bundle: must be a FHIR Bundle resource",
+        });
+      }
+      
+      if (!bundle.entry || bundle.entry.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Bundle is empty: no resources to upload",
         });
       }
 
-      const result = await response.json();
-      const resourceIds = result.entry?.map((e: any) => e.response?.location?.split('/').slice(-1)[0]).filter(Boolean) || [];
+      console.log(`📦 Uploading bundle with ${bundle.entry.length} resources to ${activeFhirServerUrl}`);
       
-      // Store bundle record
-      await storage.createBundle({
-        sessionId,
-        fileName,
-        bundleType: bundle.type || "transaction",
-        resourceCount: bundle.entry?.length || 0,
-        fhirServerId: null, // We could map this if needed
-        metadata: { resourceIds },
-      });
+      // Enhanced bundle upload with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for uploads
+      
+      try {
+        const response = await fetch(activeFhirServerUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/fhir+json',
+            'Accept': 'application/fhir+json',
+            'User-Agent': 'FHIR-Bootcamp/1.0',
+          },
+          body: JSON.stringify(bundle),
+          signal: controller.signal,
+        });
 
-      res.json({
-        success: true,
-        resourcesCreated: resourceIds.length,
-        resourceIds,
-      });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          let errorMessage = `HTTP ${response.status}`;
+          let errorDetails = null;
+          
+          try {
+            const errorText = await response.text();
+            if (errorText.trim()) {
+              const errorJson = JSON.parse(errorText);
+              if (errorJson.issue && errorJson.issue.length > 0) {
+                errorMessage += `: ${errorJson.issue[0].details?.text || errorJson.issue[0].diagnostics || 'FHIR validation error'}`;
+                errorDetails = errorJson.issue.map((issue: any) => ({
+                  severity: issue.severity,
+                  code: issue.code,
+                  details: issue.details?.text || issue.diagnostics,
+                  location: issue.location,
+                }));
+              } else {
+                errorMessage += `: ${errorText.substring(0, 300)}`;
+              }
+            }
+          } catch (e) {
+            errorMessage += " (unable to parse error details)";
+          }
+          
+          return res.status(400).json({
+            success: false,
+            error: errorMessage,
+            statusCode: response.status,
+            errorDetails,
+            serverUrl: activeFhirServerUrl,
+          });
+        }
+
+        const result = await response.json();
+        console.log(`✅ Bundle upload successful`);
+        
+        // Extract resource IDs from response
+        const resourceIds = result.entry?.map((e: any) => {
+          const location = e.response?.location;
+          if (location) {
+            // Extract ID from location like "Patient/123/_history/1" or "Patient/123"
+            const match = location.match(/\/([^/]+)(?:\/_history|$)/);
+            return match ? match[1] : null;
+          }
+          return null;
+        }).filter(Boolean) || [];
+        
+        // Count successful vs failed resources
+        const successfulCount = result.entry?.filter((e: any) => 
+          e.response?.status?.startsWith('2') // 200, 201, etc.
+        ).length || 0;
+        
+        const failedCount = (result.entry?.length || 0) - successfulCount;
+        
+        // Store bundle record
+        await storage.createBundle({
+          sessionId,
+          fileName,
+          bundleType: bundle.type || "transaction",
+          resourceCount: bundle.entry?.length || 0,
+          fhirServerId: null, // We could map this if needed
+          metadata: { 
+            resourceIds, 
+            successfulCount, 
+            failedCount,
+            serverUrl: activeFhirServerUrl 
+          },
+        });
+
+        res.json({
+          success: true,
+          resourcesCreated: successfulCount,
+          resourcesFailed: failedCount,
+          resourceIds,
+          serverUrl: activeFhirServerUrl,
+          totalResources: bundle.entry.length,
+        });
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        
+        let errorMessage = "Upload failed";
+        if (fetchError instanceof Error) {
+          if (fetchError.name === 'AbortError') {
+            errorMessage = "Upload timeout (server took too long to process the bundle)";
+          } else if (fetchError.message.includes('ENOTFOUND') || fetchError.message.includes('ECONNREFUSED')) {
+            errorMessage = `Cannot reach FHIR server at ${activeFhirServerUrl}`;
+          } else {
+            errorMessage = fetchError.message;
+          }
+        }
+        
+        return res.status(500).json({
+          success: false,
+          error: errorMessage,
+          serverUrl: activeFhirServerUrl,
+        });
+      }
     } catch (error) {
+      console.error('Bundle upload error:', error);
       res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "Upload failed",
+        error: error instanceof Error ? error.message : "Bundle processing failed",
       });
     }
   });
