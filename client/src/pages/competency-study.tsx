@@ -29,6 +29,11 @@ interface Quiz {
   competencyAreaId?: string;
 }
 
+interface QuizData {
+  quiz: Quiz;
+  questions: any[];
+}
+
 export default function CompetencyStudy() {
   const [, params] = useRoute("/study/:slug");
   const slug = params?.slug;
@@ -38,10 +43,12 @@ export default function CompetencyStudy() {
     enabled: !!slug,
   });
 
-  const { data: quiz, isLoading: quizLoading } = useQuery<Quiz>({
+  const { data: quizData, isLoading: quizLoading } = useQuery<QuizData>({
     queryKey: [`/api/quiz/${slug}`],
     enabled: !!slug,
   });
+
+  const quiz = quizData?.quiz;
 
   const getCompetencyIcon = (slug: string) => {
     switch (slug) {
