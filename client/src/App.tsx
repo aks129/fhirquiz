@@ -22,6 +22,7 @@ import StudyMode from "@/pages/study-mode";
 import CompetencyStudy from "@/pages/competency-study";
 import PracticeExam from "@/pages/practice-exam";
 import ProgressTracking from "@/pages/progress-tracking";
+import QuickReference from "@/pages/quick-reference";
 import ByodPage from "@/pages/byod";
 import MiniAppPage from "@/pages/mini-app";
 import DemoPage from "@/pages/demo";
@@ -138,6 +139,7 @@ function Router() {
             <Route path="/study/:slug" component={CompetencyStudy} />
             <Route path="/practice-exam" component={PracticeExam} />
             <Route path="/progress" component={ProgressTracking} />
+            <Route path="/quick-reference" component={QuickReference} />
             <Route path="/mini-app/:id" component={MiniAppPage} />
             <Route path="/demo" component={DemoPage} />
             <Route path="/resources" component={Resources} />

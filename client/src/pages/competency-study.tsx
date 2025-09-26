@@ -67,6 +67,351 @@ export default function CompetencyStudy() {
     }
   };
 
+  const getStudyResources = (slug: string) => {
+    const commonResources = (
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Official FHIR Documentation</CardTitle>
+            <CardDescription>
+              Authoritative sources from HL7 and the FHIR community
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="border rounded-lg p-4">
+              <h4 className="font-medium mb-2">FHIR R4 Specification</h4>
+              <p className="text-sm text-muted-foreground mb-3">
+                The complete FHIR R4 specification with detailed resource definitions and implementation guidance.
+              </p>
+              <Button variant="outline" size="sm" asChild data-testid="link-fhir-spec">
+                <a href="https://hl7.org/fhir/R4/" target="_blank" rel="noopener noreferrer">
+                  Visit FHIR R4 Spec
+                </a>
+              </Button>
+            </div>
+            
+            <div className="border rounded-lg p-4">
+              <h4 className="font-medium mb-2">FHIR Foundation Exam Guide</h4>
+              <p className="text-sm text-muted-foreground mb-3">
+                Official exam preparation guide with detailed competency descriptions and objectives.
+              </p>
+              <Button variant="outline" size="sm" asChild data-testid="link-exam-guide">
+                <a href="https://www.hl7.org/implement/certifications/fhir/" target="_blank" rel="noopener noreferrer">
+                  View Exam Guide
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+
+    switch (slug) {
+      case "implementation-guides":
+        return (
+          <div className="space-y-4">
+            {commonResources}
+            <Card>
+              <CardHeader>
+                <CardTitle>Implementation Guide Resources</CardTitle>
+                <CardDescription>
+                  Specific resources for understanding and working with FHIR Implementation Guides
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">US Core Implementation Guide</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    The foundational IG for US-based FHIR implementations, demonstrating best practices.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-us-core">
+                    <a href="http://hl7.org/fhir/us/core/" target="_blank" rel="noopener noreferrer">
+                      Explore US Core
+                    </a>
+                  </Button>
+                </div>
+                
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">IG Registry</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Browse the complete registry of published FHIR Implementation Guides.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-ig-registry">
+                    <a href="https://fhir.org/guides/registry/" target="_blank" rel="noopener noreferrer">
+                      Browse IG Registry
+                    </a>
+                  </Button>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">IG Publisher Documentation</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Learn how Implementation Guides are created and published.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-ig-publisher">
+                    <a href="https://confluence.hl7.org/display/FHIR/IG+Publisher+Documentation" target="_blank" rel="noopener noreferrer">
+                      IG Publisher Docs
+                    </a>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "api-behavior":
+        return (
+          <div className="space-y-4">
+            {commonResources}
+            <Card>
+              <CardHeader>
+                <CardTitle>API Behavior Resources</CardTitle>
+                <CardDescription>
+                  Resources for understanding FHIR RESTful APIs and HTTP operations
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">FHIR RESTful API</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Complete documentation of FHIR's RESTful API including HTTP operations.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-rest-api">
+                    <a href="https://hl7.org/fhir/R4/http.html" target="_blank" rel="noopener noreferrer">
+                      FHIR HTTP API
+                    </a>
+                  </Button>
+                </div>
+                
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">SMART on FHIR</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Security framework for FHIR applications using OAuth 2.0.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-smart-fhir">
+                    <a href="https://hl7.org/fhir/smart-app-launch/" target="_blank" rel="noopener noreferrer">
+                      SMART on FHIR
+                    </a>
+                  </Button>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">FHIR Search</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Comprehensive guide to FHIR search parameters and modifiers.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-search">
+                    <a href="https://hl7.org/fhir/R4/search.html" target="_blank" rel="noopener noreferrer">
+                      FHIR Search Guide
+                    </a>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "resource-model":
+        return (
+          <div className="space-y-4">
+            {commonResources}
+            <Card>
+              <CardHeader>
+                <CardTitle>Resource Model Resources</CardTitle>
+                <CardDescription>
+                  Resources for understanding FHIR resource structure and data types
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">Resource Definitions</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Complete list of all FHIR resources with detailed element definitions.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-resources">
+                    <a href="https://hl7.org/fhir/R4/resourcelist.html" target="_blank" rel="noopener noreferrer">
+                      Browse Resources
+                    </a>
+                  </Button>
+                </div>
+                
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">Data Types</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Understanding primitive and complex data types used in FHIR.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-datatypes">
+                    <a href="https://hl7.org/fhir/R4/datatypes.html" target="_blank" rel="noopener noreferrer">
+                      Data Types Guide
+                    </a>
+                  </Button>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">References and Bundles</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    How to link resources and work with Bundle resources.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-references">
+                    <a href="https://hl7.org/fhir/R4/references.html" target="_blank" rel="noopener noreferrer">
+                      References Guide
+                    </a>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "implementation":
+        return (
+          <div className="space-y-4">
+            {commonResources}
+            <Card>
+              <CardHeader>
+                <CardTitle>Implementation Resources</CardTitle>
+                <CardDescription>
+                  Practical guidance for implementing FHIR solutions
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">Implementation Guide Template</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Template and guidance for creating custom Implementation Guides.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-ig-template">
+                    <a href="https://github.com/HL7/ig-template-base" target="_blank" rel="noopener noreferrer">
+                      IG Template
+                    </a>
+                  </Button>
+                </div>
+                
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">FHIR Operations</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Understanding and implementing custom FHIR operations.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-operations">
+                    <a href="https://hl7.org/fhir/R4/operations.html" target="_blank" rel="noopener noreferrer">
+                      Operations Guide
+                    </a>
+                  </Button>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">Bulk Data Export</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Specification for bulk data export operations in FHIR.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-bulk-data">
+                    <a href="https://hl7.org/fhir/uv/bulkdata/" target="_blank" rel="noopener noreferrer">
+                      Bulk Data IG
+                    </a>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "troubleshooting":
+        return (
+          <div className="space-y-4">
+            {commonResources}
+            <Card>
+              <CardHeader>
+                <CardTitle>Troubleshooting Resources</CardTitle>
+                <CardDescription>
+                  Tools and guides for debugging FHIR implementations
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">FHIR Validator</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Official FHIR validator for checking resource conformance.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-validator">
+                    <a href="https://confluence.hl7.org/display/FHIR/Using+the+FHIR+Validator" target="_blank" rel="noopener noreferrer">
+                      FHIR Validator
+                    </a>
+                  </Button>
+                </div>
+                
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">OperationOutcome</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Understanding error reporting and validation messages in FHIR.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-operation-outcome">
+                    <a href="https://hl7.org/fhir/R4/operationoutcome.html" target="_blank" rel="noopener noreferrer">
+                      OperationOutcome
+                    </a>
+                  </Button>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">FHIR Test Data</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Sample FHIR resources and test data for validation practice.
+                  </p>
+                  <Button variant="outline" size="sm" asChild data-testid="link-test-data">
+                    <a href="https://github.com/synthetichealth/synthea" target="_blank" rel="noopener noreferrer">
+                      Synthea Test Data
+                    </a>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Reference Guides</CardTitle>
+                <CardDescription>
+                  Handy reference materials for exam preparation
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">HTTP Status Codes</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Quick reference for HTTP status codes commonly used in FHIR.
+                  </p>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <div><span className="font-mono">200</span> - Success (GET, PUT)</div>
+                    <div><span className="font-mono">201</span> - Created (POST)</div>
+                    <div><span className="font-mono">204</span> - Success, no content (DELETE)</div>
+                    <div><span className="font-mono">400</span> - Bad Request</div>
+                    <div><span className="font-mono">401</span> - Unauthorized</div>
+                    <div><span className="font-mono">404</span> - Not Found</div>
+                    <div><span className="font-mono">412</span> - Precondition Failed</div>
+                  </div>
+                </div>
+                
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">Search Parameter Types</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Common FHIR search parameter modifiers and their usage.
+                  </p>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <div><span className="font-mono">:exact</span> - Exact string match</div>
+                    <div><span className="font-mono">:contains</span> - Substring search</div>
+                    <div><span className="font-mono">:missing</span> - Element presence check</div>
+                    <div><span className="font-mono">:not</span> - Logical NOT modifier</div>
+                    <div><span className="font-mono">:above/:below</span> - Hierarchy navigation</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      default:
+        return commonResources;
+    }
+  };
+
   const getStudyContent = (slug: string) => {
     switch (slug) {
       case "implementation-guides":
@@ -363,53 +708,7 @@ export default function CompetencyStudy() {
         </TabsContent>
 
         <TabsContent value="resources" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Study Resources</CardTitle>
-              <CardDescription>
-                Official documentation and additional materials
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="border rounded-lg p-4">
-                  <h4 className="font-medium mb-2">Official FHIR Specification</h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    The authoritative source for FHIR concepts and implementation guidance.
-                  </p>
-                  <Button variant="outline" size="sm" asChild>
-                    <a href="https://hl7.org/fhir/R4/" target="_blank" rel="noopener noreferrer">
-                      Visit FHIR R4 Spec
-                    </a>
-                  </Button>
-                </div>
-                
-                <div className="border rounded-lg p-4">
-                  <h4 className="font-medium mb-2">HL7 FHIR University</h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Free online courses and learning materials from HL7.
-                  </p>
-                  <Button variant="outline" size="sm" asChild>
-                    <a href="https://www.hl7.org/fhir/R4/index.html" target="_blank" rel="noopener noreferrer">
-                      Explore Courses
-                    </a>
-                  </Button>
-                </div>
-                
-                <div className="border rounded-lg p-4">
-                  <h4 className="font-medium mb-2">Implementation Guides</h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Real-world examples of FHIR implementation guides and profiles.
-                  </p>
-                  <Button variant="outline" size="sm" asChild>
-                    <a href="https://fhir.org/guides/registry/" target="_blank" rel="noopener noreferrer">
-                      Browse IG Registry
-                    </a>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {getStudyResources(slug || "")}
         </TabsContent>
       </Tabs>
     </div>

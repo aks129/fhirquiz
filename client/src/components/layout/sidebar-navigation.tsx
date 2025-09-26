@@ -56,6 +56,13 @@ export default function SidebarNavigation() {
       description: "Track performance across competency areas",
     },
     {
+      id: "quick-reference",
+      path: "/quick-reference",
+      label: "📚 Quick Reference",
+      icon: "fas fa-bookmark",
+      description: "Essential FHIR concepts and patterns",
+    },
+    {
       id: "day1",
       path: "/lab/day1", 
       label: "Day 1: Ingest & Land",
