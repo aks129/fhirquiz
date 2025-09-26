@@ -55,9 +55,12 @@ function Router() {
   const [location] = useLocation();
   const { user } = useAuth();
 
+  // Check if we're in demo mode
+  const isDemoMode = localStorage.getItem('demo-mode') === 'true';
+
   // Determine if we're in marketing mode or app mode
   const marketingPaths = ["/", "/curriculum", "/pricing", "/docs", "/terms", "/privacy", "/security", "/help", "/contact", "/demo"];
-  const isMarketingMode = marketingPaths.includes(location) || (!user && location === "/");
+  const isMarketingMode = marketingPaths.includes(location) || (!user && !isDemoMode && location === "/");
   
   // Handle portal routing
   const isPortalPath = location === "/portal";
