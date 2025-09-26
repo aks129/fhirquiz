@@ -35,12 +35,22 @@ export function QuizRunner({ quizSlug, onComplete }: QuizRunnerProps) {
   });
 
   const gradeQuizMutation = useMutation({
-    mutationFn: (submission: QuizSubmission) => 
-      apiRequest(`/api/quiz/${quizSlug}/grade`, {
+    mutationFn: async (submission: QuizSubmission) => {
+      const response = await fetch(`/api/quiz/${quizSlug}/grade`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-session-id": crypto.randomUUID()
+        },
         body: JSON.stringify(submission)
-      }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to grade quiz: ${response.statusText}`);
+      }
+      return response.json();
+    },
     onSuccess: (gradedResult: QuizResult) => {
+      console.log("Quiz graded successfully:", gradedResult);
       setResult(gradedResult);
       setState("reviewing");
       
@@ -51,15 +61,27 @@ export function QuizRunner({ quizSlug, onComplete }: QuizRunnerProps) {
         score: gradedResult.score,
         passed: gradedResult.passed
       });
+    },
+    onError: (error) => {
+      console.error("Quiz grading failed:", error);
     }
   });
 
   const recordAttemptMutation = useMutation({
-    mutationFn: (attemptData: any) => 
-      apiRequest(`/api/quiz/${quizSlug}/attempt`, {
+    mutationFn: async (attemptData: any) => {
+      const response = await fetch(`/api/quiz/${quizSlug}/attempt`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-session-id": crypto.randomUUID()
+        },
         body: JSON.stringify(attemptData)
-      }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to record attempt: ${response.statusText}`);
+      }
+      return response.json();
+    },
     onSuccess: () => {
       // Invalidate quiz attempts cache
       queryClient.invalidateQueries({ queryKey: ["/api/quiz-attempts"] });
@@ -124,6 +146,8 @@ export function QuizRunner({ quizSlug, onComplete }: QuizRunnerProps) {
       duration: Math.floor(timeElapsed / 1000)
     };
     
+    console.log("Submitting quiz:", submission);
+    console.log("Current answers:", answers);
     gradeQuizMutation.mutate(submission);
   };
 
@@ -315,7 +339,7 @@ export function QuizRunner({ quizSlug, onComplete }: QuizRunnerProps) {
           </CardTitle>
         </CardHeader>
         
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6" data-testid="quiz-results-summary">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold" data-testid="text-final-score">{result.score}%</div>

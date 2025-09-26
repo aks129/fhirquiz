@@ -442,6 +442,35 @@ export type InsertByodObservation = z.infer<typeof insertByodObservationSchema>;
 export type GeneratedApp = typeof generatedApps.$inferSelect;
 export type InsertGeneratedApp = z.infer<typeof insertGeneratedAppSchema>;
 
+// Quiz-related API types
+export interface QuizData {
+  quiz: Quiz;
+  questions: (Question & { choices: Choice[] })[];
+}
+
+export interface QuizSubmission {
+  answers: Array<{
+    questionId: string;
+    choiceId: string;
+  }>;
+  duration: number;
+}
+
+export interface QuizResult {
+  score: number;
+  passed: boolean;
+  totalQuestions: number;
+  correctAnswers: number;
+  feedback: Array<{
+    questionId: string;
+    questionText: string;
+    selectedChoice: string;
+    correctChoice: string;
+    isCorrect: boolean;
+    explanation: string;
+  }>;
+}
+
 // Feature Flags Table
 export const featureFlags = pgTable("feature_flags", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
