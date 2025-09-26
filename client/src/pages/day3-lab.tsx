@@ -94,6 +94,25 @@ export default function Day3Lab() {
   );
 
   const handlePublishObservation = () => {
+    // Validate prerequisites
+    if (!getSelectedServer() || !getSelectedPatient()) {
+      toast({
+        title: "Missing Prerequisites",
+        description: "Please ensure you have a FHIR server selected and patient data from Day 1-2.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (riskScoreArtifacts.length === 0) {
+      toast({
+        title: "Missing Risk Score Data",
+        description: "Complete Day 2 risk score calculations before publishing observations.",
+        variant: "destructive", 
+      });
+      return;
+    }
+
     publishMutation.mutate(observationData);
   };
 
@@ -140,19 +159,44 @@ export default function Day3Lab() {
       {/* Step 1: Create Observation */}
       <LabStep
         stepNumber={1}
-        title="Create FHIR Observation"
-        description="Map your computed risk scores to a valid FHIR Observation resource with proper CodeableConcept structure."
+        title="Publish Risk Assessment Observation"
+        description="Transform your Day 2 analytics results into standardized FHIR Observations that can integrate with any healthcare system worldwide."
         status={isStepCompleted("observation_create") ? "complete" : "in-progress"}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <i className="fas fa-file-medical text-primary"></i>
-                <span>Observation Builder</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        <div className="space-y-6">
+          {/* Educational Context */}
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <i className="fas fa-sync-alt text-indigo-600 mt-0.5"></i>
+              <div className="flex-1">
+                <h4 className="font-medium text-indigo-800 mb-2">🎯 Operationalization Concept: Closing the FHIR Loop</h4>
+                <div className="space-y-2 text-sm text-indigo-700">
+                  <p>📥 <strong>Day 1:</strong> Ingested FHIR resources from external systems</p>
+                  <p>🔄 <strong>Day 2:</strong> Transformed data into healthcare analytics and risk scores</p>
+                  <p>📤 <strong>Day 3:</strong> Publish insights back as FHIR Observations for downstream systems</p>
+                  <p>🌐 <strong>Impact:</strong> Your risk assessments can now trigger clinical decision support, quality measures, and care coordination</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <i className="fas fa-file-medical text-primary"></i>
+                  <span>Risk Assessment Observation Builder</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Data Source Info */}
+                {riskScoreArtifacts.length > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded p-3">
+                    <p className="text-sm text-green-700">
+                      📊 <strong>Source:</strong> Using risk scores from Day 2 analytics ({riskScoreArtifacts.length} patient{riskScoreArtifacts.length !== 1 ? 's' : ''} processed)
+                    </p>
+                  </div>
+                )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="obs-code">LOINC Code</Label>
@@ -205,26 +249,44 @@ export default function Day3Lab() {
 
               <Button 
                 onClick={handlePublishObservation}
-                disabled={publishMutation.isPending}
+                disabled={publishMutation.isPending || riskScoreArtifacts.length === 0 || !getSelectedServer() || !getSelectedPatient()}
                 className="w-full bg-purple-500 hover:bg-purple-600"
                 data-testid="button-publish-observation"
               >
                 <i className="fas fa-share-alt mr-2"></i>
-                {publishMutation.isPending ? "Publishing..." : "Publish Observation"}
+                {publishMutation.isPending ? "Publishing..." : "Publish Risk Assessment"}
               </Button>
+              
+              {(riskScoreArtifacts.length === 0 || !getSelectedServer() || !getSelectedPatient()) && (
+                <div className="bg-amber-50 border border-amber-200 rounded p-3">
+                  <p className="text-xs text-amber-700">
+                    ⚠️ Complete prerequisite steps: Day 1 (patient data) + Day 2 (risk calculations) + FHIR server connection
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>FHIR Resource Preview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-muted rounded-lg p-4 font-mono text-sm overflow-auto max-h-80">
-                <pre className="text-foreground">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <i className="fas fa-code text-primary"></i>
+                  <span>FHIR R4 Resource Preview</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm overflow-auto max-h-80">
+                  <pre className="text-green-400">
 {JSON.stringify({
   resourceType: "Observation",
   status: "final",
+  category: [{
+    coding: [{
+      system: "http://terminology.hl7.org/CodeSystem/observation-category",
+      code: "survey",
+      display: "Survey"
+    }]
+  }],
   code: {
     coding: [{
       system: "http://loinc.org",
@@ -235,6 +297,7 @@ export default function Day3Lab() {
   },
   subject: {
     reference: `Patient/${getSelectedPatient() || 'patient-id'}`,
+    display: "Patient from Day 1-2 analytics"
   },
   valueQuantity: {
     value: observationData.value,
@@ -243,11 +306,25 @@ export default function Day3Lab() {
     code: observationData.unit,
   },
   effectiveDateTime: new Date().toISOString(),
+  note: [{
+    text: "Generated from Day 2 healthcare analytics pipeline"
+  }]
 }, null, 2)}
-                </pre>
-              </div>
-            </CardContent>
-          </Card>
+                  </pre>
+                </div>
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                  <h5 className="font-medium text-blue-800 mb-1">📋 FHIR R4 Compliance Checklist</h5>
+                  <div className="text-xs text-blue-700 space-y-1">
+                    <div>✅ <strong>resourceType:</strong> "Observation" per R4 specification</div>
+                    <div>✅ <strong>status:</strong> "final" indicates completed assessment</div>
+                    <div>✅ <strong>code.coding:</strong> LOINC system for standardized terminology</div>
+                    <div>✅ <strong>subject:</strong> Patient reference maintains data lineage</div>
+                    <div>✅ <strong>valueQuantity:</strong> Structured numeric value with UCUM units</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </LabStep>
 
@@ -370,15 +447,46 @@ export default function Day3Lab() {
       {publishedObservation && (
         <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
           <CardContent className="p-6 text-center">
-            <h3 className="text-lg font-semibold text-purple-800 mb-2">🎉 Day 3 Complete!</h3>
+            <h3 className="text-lg font-semibold text-purple-800 mb-2">🎉 FHIR Healthcare Bootcamp Complete!</h3>
             <p className="text-sm text-purple-700 mb-4">
-              You've successfully completed the FHIR Healthcare Bootcamp! You've ingested data, 
-              transformed it with analytics, and published insights back to a FHIR server.
+              You've successfully completed the full FHIR interoperability workflow: ingested data from external systems, 
+              transformed it with healthcare analytics, and published insights back as standardized FHIR resources.
             </p>
-            <Button className="bg-purple-500 hover:bg-purple-600" data-testid="button-view-gallery">
-              <i className="fas fa-trophy mr-2"></i>
-              View Results Gallery
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button 
+                onClick={() => window.location.href = "/quiz/day3"}
+                className="bg-blue-600 hover:bg-blue-700" 
+                data-testid="button-take-day3-quiz"
+              >
+                <i className="fas fa-graduation-cap mr-2"></i>
+                Take Day 3 Quiz
+              </Button>
+              <Button 
+                className="bg-purple-500 hover:bg-purple-600" 
+                data-testid="button-view-gallery"
+                onClick={() => window.location.href = "/"}
+              >
+                <i className="fas fa-trophy mr-2"></i>
+                View All Quizzes
+              </Button>
+            </div>
+            <div className="mt-4 p-4 bg-purple-100 border border-purple-300 rounded-lg">
+              <h4 className="font-medium text-purple-800 mb-2">🎯 What You've Accomplished:</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-purple-700">
+                <div>
+                  <strong>📥 Day 1: Ingest</strong><br/>
+                  Connected to FHIR servers, uploaded synthetic patient bundles, exported CSV data
+                </div>
+                <div>
+                  <strong>🔄 Day 2: Transform</strong><br/>
+                  Built SQL analytics for risk scoring, readmission analysis, and population health
+                </div>
+                <div>
+                  <strong>📤 Day 3: Operationalize</strong><br/>
+                  Published FHIR Observations with LOINC codes for clinical decision support
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
