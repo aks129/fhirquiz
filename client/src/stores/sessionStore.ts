@@ -28,7 +28,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   profile: null,
   isAdmin: false,
   isInstructor: false,
-  isDemoMode: false,
+  isDemoMode: (
+    // Check if demo mode is explicitly set in localStorage
+    localStorage.getItem('demo-mode') === 'true' ||
+    // OR automatically enable demo mode when VITE_SUPABASE_URL is missing (auth disabled)
+    !import.meta.env.VITE_SUPABASE_URL
+  ),
   
   setUser: (user) => {
     set({ user })
