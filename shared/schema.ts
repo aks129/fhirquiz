@@ -225,14 +225,28 @@ export interface TransformResult {
   }>;
 }
 
-// Quiz System Tables
+// Exam System Tables
+
+// Competency areas for the HL7 FHIR Foundation exam
+export const competencyAreas = pgTable("competency_areas", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  minPercentage: integer("min_percentage").notNull(), // e.g., 4 for 4%
+  maxPercentage: integer("max_percentage").notNull(), // e.g., 8 for 8%
+  order: integer("order").default(0),
+});
+
 export const quizzes = pgTable("quizzes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   slug: text("slug").notNull().unique(),
   title: text("title").notNull(),
   description: text("description"),
+  quizType: text("quiz_type").notNull().default("practice"), // practice, exam, study
+  competencyAreaId: varchar("competency_area_id").references(() => competencyAreas.id),
   timeLimit: integer("time_limit"), // in minutes
-  passingScore: integer("passing_score").default(80), // percentage
+  passingScore: integer("passing_score").default(70), // 70% for foundation exam
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -240,9 +254,12 @@ export const quizzes = pgTable("quizzes", {
 export const questions = pgTable("questions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   quizId: varchar("quiz_id").references(() => quizzes.id),
+  competencyAreaId: varchar("competency_area_id").references(() => competencyAreas.id),
   questionText: text("question_text").notNull(),
+  questionType: text("question_type").notNull().default("single_choice"), // single_choice, multiple_choice, true_false
   explanation: text("explanation"),
   tags: jsonb("tags"), // array of strings
+  difficulty: text("difficulty").default("medium"), // easy, medium, hard
   order: integer("order").default(0),
 });
 
@@ -270,8 +287,35 @@ export const quizAnswers = pgTable("quiz_answers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   attemptId: varchar("attempt_id").references(() => quizAttempts.id),
   questionId: varchar("question_id").references(() => questions.id),
-  choiceId: varchar("choice_id").references(() => choices.id),
+  choiceIds: jsonb("choice_ids"), // array of choice IDs for multi-select
   isCorrect: boolean("is_correct").default(false),
+  timeSpent: integer("time_spent"), // seconds spent on this question
+});
+
+// Study progress tracking by competency area
+export const studyProgress = pgTable("study_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: text("session_id"), // For anonymous users
+  competencyAreaId: varchar("competency_area_id").references(() => competencyAreas.id),
+  studyTimeMinutes: integer("study_time_minutes").default(0),
+  practiceQuestionsAttempted: integer("practice_questions_attempted").default(0),
+  practiceQuestionsCorrect: integer("practice_questions_correct").default(0),
+  masteryLevel: text("mastery_level").default("beginner"), // beginner, intermediate, advanced, mastered
+  lastStudiedAt: timestamp("last_studied_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Detailed exam analytics
+export const examAnalytics = pgTable("exam_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  attemptId: varchar("attempt_id").references(() => quizAttempts.id),
+  competencyAreaId: varchar("competency_area_id").references(() => competencyAreas.id),
+  questionsAttempted: integer("questions_attempted").default(0),
+  questionsCorrect: integer("questions_correct").default(0),
+  averageTimePerQuestion: integer("average_time_per_question"), // seconds
+  strengthAreas: jsonb("strength_areas"), // array of tag strings
+  weaknessAreas: jsonb("weakness_areas"), // array of tag strings
 });
 
 // BYOD System Tables
@@ -311,7 +355,11 @@ export const generatedApps = pgTable("generated_apps", {
   lastAccessed: timestamp("last_accessed"),
 });
 
-// Insert schemas for quiz system
+// Insert schemas for exam system
+export const insertCompetencyAreaSchema = createInsertSchema(competencyAreas).omit({
+  id: true,
+});
+
 export const insertQuizSchema = createInsertSchema(quizzes).omit({
   id: true,
   createdAt: true,
@@ -335,6 +383,15 @@ export const insertQuizAnswerSchema = createInsertSchema(quizAnswers).omit({
   id: true,
 });
 
+export const insertStudyProgressSchema = createInsertSchema(studyProgress).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertExamAnalyticsSchema = createInsertSchema(examAnalytics).omit({
+  id: true,
+});
+
 export const insertByodSessionSchema = createInsertSchema(byodSessions).omit({
   id: true,
   createdAt: true,
@@ -351,7 +408,10 @@ export const insertGeneratedAppSchema = createInsertSchema(generatedApps).omit({
   lastAccessed: true,
 });
 
-// Quiz system types
+// Exam system types
+export type CompetencyArea = typeof competencyAreas.$inferSelect;
+export type InsertCompetencyArea = z.infer<typeof insertCompetencyAreaSchema>;
+
 export type Quiz = typeof quizzes.$inferSelect;
 export type InsertQuiz = z.infer<typeof insertQuizSchema>;
 
@@ -366,6 +426,12 @@ export type InsertQuizAttempt = z.infer<typeof insertQuizAttemptSchema>;
 
 export type QuizAnswer = typeof quizAnswers.$inferSelect;
 export type InsertQuizAnswer = z.infer<typeof insertQuizAnswerSchema>;
+
+export type StudyProgress = typeof studyProgress.$inferSelect;
+export type InsertStudyProgress = z.infer<typeof insertStudyProgressSchema>;
+
+export type ExamAnalytics = typeof examAnalytics.$inferSelect;
+export type InsertExamAnalytics = z.infer<typeof insertExamAnalyticsSchema>;
 
 export type ByodSession = typeof byodSessions.$inferSelect;
 export type InsertByodSession = z.infer<typeof insertByodSessionSchema>;
@@ -445,31 +511,61 @@ export type SimulatorCollection = typeof simulatorCollections.$inferSelect;
 export type InsertSimulatorCollection = z.infer<typeof insertSimulatorCollectionSchema>;
 
 // Quiz API types
-export interface QuizData {
+export interface ExamData {
   quiz: Quiz;
+  competencyArea?: CompetencyArea;
   questions: Array<Question & { choices: Choice[] }>;
 }
 
-export interface QuizSubmission {
+export interface ExamSubmission {
   answers: Array<{
     questionId: string;
-    choiceId: string;
+    choiceIds: string[]; // array to support multi-select
+    timeSpent?: number;
   }>;
   duration: number;
 }
 
-export interface QuizResult {
+export interface ExamResult {
   score: number;
   passed: boolean;
   totalQuestions: number;
   correctAnswers: number;
+  competencyBreakdown: Array<{
+    competencyAreaId: string;
+    competencyName: string;
+    questionsAttempted: number;
+    questionsCorrect: number;
+    percentage: number;
+  }>;
   feedback: Array<{
     questionId: string;
     questionText: string;
-    selectedChoice: string;
-    correctChoice: string;
+    selectedChoices: string[];
+    correctChoices: string[];
     isCorrect: boolean;
     explanation: string;
+    competencyArea: string;
+    timeSpent?: number;
+  }>;
+  studyRecommendations: string[];
+}
+
+// Study progress API types
+export interface StudyDashboard {
+  overallProgress: {
+    totalStudyTime: number;
+    totalQuestionsAttempted: number;
+    overallAccuracy: number;
+    readinessLevel: 'not_ready' | 'needs_work' | 'ready' | 'exam_ready';
+  };
+  competencyProgress: Array<{
+    competencyArea: CompetencyArea;
+    progress: StudyProgress;
+    accuracy: number;
+    timeSpent: number;
+    masteryLevel: string;
+    recommendedActions: string[];
   }>;
 }
 
