@@ -914,6 +914,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Progress tracking endpoint
+  app.get("/api/progress/competency-analysis", async (req, res) => {
+    try {
+      const sessionId = req.headers['x-session-id'] as string;
+      
+      // Get all competency areas
+      const competencyAreas = await storage.getCompetencyAreas();
+      
+      const progressData = await Promise.all(
+        competencyAreas.map(async (area) => {
+          // Get study progress for this competency
+          const studyProgress = await storage.getStudyProgressByCompetency(sessionId, area.id);
+          
+          // Get quiz attempts for this competency
+          const quizAttempts = await storage.getQuizAttempts(sessionId);
+          const competencyQuizAttempts = quizAttempts.filter(attempt => {
+            // Match quiz attempts to competency areas by quiz slug
+            return attempt.quizId === area.slug;
+          });
+          
+          // Get quiz attempts for practice exams (need to analyze by question competency)
+          const practiceExamAttempts = quizAttempts.filter(attempt => attempt.quizId === "practice-exam");
+          
+          // Calculate stats
+          const totalAttempts = competencyQuizAttempts.length + practiceExamAttempts.length;
+          const correctAttempts = competencyQuizAttempts.filter(a => a.passed).length;
+          
+          let overallAccuracy = 0;
+          let totalCorrect = 0;
+          let questionAttempts = 0;
+          
+          if (competencyQuizAttempts.length > 0) {
+            const averageScore = competencyQuizAttempts.reduce((sum, a) => sum + (a.score || 0), 0) / competencyQuizAttempts.length;
+            overallAccuracy = averageScore;
+            
+            // Estimate question-level stats from scores
+            questionAttempts = competencyQuizAttempts.length * 10; // Assume ~10 questions per competency quiz
+            totalCorrect = Math.round((questionAttempts * averageScore) / 100);
+          }
+          
+          // Calculate mastery score based on multiple factors
+          const accuracyScore = overallAccuracy;
+          const consistencyScore = competencyQuizAttempts.length > 1 ? 
+            Math.max(0, 100 - (competencyQuizAttempts.map(a => a.score || 0).reduce((acc, score, _, arr) => 
+              acc + Math.abs(score - (arr.reduce((s, sc) => s + sc, 0) / arr.length)), 0) / competencyQuizAttempts.length)) : 0;
+          const volumeScore = Math.min(100, (competencyQuizAttempts.length / 3) * 100); // 3 attempts = full volume score
+          
+          const masteryScore = (accuracyScore * 0.6) + (consistencyScore * 0.2) + (volumeScore * 0.2);
+          
+          // Generate recommendations
+          const recommendedActions = [];
+          if (overallAccuracy < 60) {
+            recommendedActions.push("Focus on understanding core concepts");
+            recommendedActions.push("Review study materials for this competency");
+          }
+          if (competencyQuizAttempts.length < 2) {
+            recommendedActions.push("Take more practice quizzes");
+          }
+          if (masteryScore < 70) {
+            recommendedActions.push("Spend more time studying this area");
+          }
+          
+          return {
+            competencyArea: area,
+            studyProgress,
+            examAnalytics: [], // Will be populated when we have detailed analytics
+            overallAccuracy,
+            totalAttempts: questionAttempts,
+            totalCorrect,
+            averageStudyTime: studyProgress?.studyTimeMinutes || 0,
+            masteryScore,
+            recommendedActions
+          };
+        })
+      );
+      
+      res.json(progressData);
+    } catch (error) {
+      console.error("Error fetching competency analysis:", error);
+      res.status(500).json({ error: "Failed to fetch progress analysis" });
+    }
+  });
+
   app.post("/api/quiz/:slug/grade", async (req, res) => {
     try {
       const { slug } = req.params;

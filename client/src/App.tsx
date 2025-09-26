@@ -21,6 +21,7 @@ import { QuizFhir } from "@/pages/quiz-fhir";
 import StudyMode from "@/pages/study-mode";
 import CompetencyStudy from "@/pages/competency-study";
 import PracticeExam from "@/pages/practice-exam";
+import ProgressTracking from "@/pages/progress-tracking";
 import ByodPage from "@/pages/byod";
 import MiniAppPage from "@/pages/mini-app";
 import DemoPage from "@/pages/demo";
@@ -136,6 +137,7 @@ function Router() {
             <Route path="/study" component={StudyMode} />
             <Route path="/study/:slug" component={CompetencyStudy} />
             <Route path="/practice-exam" component={PracticeExam} />
+            <Route path="/progress" component={ProgressTracking} />
             <Route path="/mini-app/:id" component={MiniAppPage} />
             <Route path="/demo" component={DemoPage} />
             <Route path="/resources" component={Resources} />

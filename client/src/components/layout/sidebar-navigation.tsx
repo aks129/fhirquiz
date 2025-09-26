@@ -49,6 +49,13 @@ export default function SidebarNavigation() {
       description: "Full-length 50-question certification simulation",
     },
     {
+      id: "progress-tracking",
+      path: "/progress",
+      label: "📊 Progress Tracking",
+      icon: "fas fa-chart-line",
+      description: "Track performance across competency areas",
+    },
+    {
       id: "day1",
       path: "/lab/day1", 
       label: "Day 1: Ingest & Land",
