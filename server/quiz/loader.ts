@@ -13,17 +13,21 @@ interface QuizBank {
     description: string;
     timeLimit?: number;
     passingScore?: number;
+    competencyAreaSlug?: string;
   };
   questions: Array<{
     id: string;
     stem: string;
+    questionType?: string;
     choices: Array<{
       id: string;
       label: string;
-      is_correct: boolean;
+      is_correct?: boolean;
+      isCorrect?: boolean;
     }>;
     explanation: string;
     tags: string[];
+    difficulty?: string;
   }>;
 }
 
@@ -31,7 +35,17 @@ export async function loadQuizBanks() {
   const bankDir = process.env.NODE_ENV === 'production'
     ? path.join(process.cwd(), 'dist/quiz/bank')
     : path.join(__dirname, 'bank');
-  const files = ['day1.json', 'day2.json', 'day3.json', 'fhir.json'];
+  const files = [
+    'day1.json', 
+    'day2.json', 
+    'day3.json', 
+    'fhir.json',
+    'resource-model.json',
+    'api-behavior.json', 
+    'implementation.json',
+    'troubleshooting.json',
+    'implementation-guides.json'
+  ];
   
   for (const file of files) {
     try {
@@ -47,12 +61,20 @@ export async function loadQuizBanks() {
         console.log(`Quiz ${quizBank.quiz.slug} already exists, skipping...`);
         continue;
       } else {
+        // Find competency area if specified
+        let competencyAreaId = null;
+        if (quizBank.quiz.competencyAreaSlug) {
+          const competencyArea = await storage.getCompetencyAreaBySlug(quizBank.quiz.competencyAreaSlug);
+          competencyAreaId = competencyArea?.id || null;
+        }
+        
         quiz = await storage.createQuiz({
           slug: quizBank.quiz.slug,
           title: quizBank.quiz.title,
           description: quizBank.quiz.description,
           timeLimit: quizBank.quiz.timeLimit || null,
           passingScore: quizBank.quiz.passingScore || 80,
+          competencyAreaId,
           isActive: true
         });
       }
@@ -64,8 +86,10 @@ export async function loadQuizBanks() {
         const question = await storage.createQuestion({
           quizId: quiz.id,
           questionText: questionData.stem,
+          questionType: questionData.questionType || 'single_choice',
           explanation: questionData.explanation,
           tags: questionData.tags,
+          difficulty: questionData.difficulty || null,
           order: qIndex
         });
         
@@ -76,7 +100,7 @@ export async function loadQuizBanks() {
           await storage.createChoice({
             questionId: question.id,
             choiceText: choiceData.label,
-            isCorrect: choiceData.is_correct,
+            isCorrect: choiceData.is_correct ?? choiceData.isCorrect ?? false,
             order: cIndex
           });
         }

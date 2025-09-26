@@ -1,0 +1,194 @@
+{
+  "quiz": {
+    "slug": "api-behavior",
+    "title": "FHIR API Behavior",
+    "description": "Exchange paradigms, RESTful methods, operations, capability statements, bundles, safety and security",
+    "timeLimit": 25,
+    "passingScore": 70,
+    "competencyAreaSlug": "api-behavior"
+  },
+  "questions": [
+    {
+      "id": "api-q1-rest-methods",
+      "stem": "Which HTTP method should be used to update an existing FHIR resource when you know its ID?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "POST", "isCorrect": false },
+        { "id": "b", "label": "PUT", "isCorrect": true },
+        { "id": "c", "label": "PATCH", "isCorrect": false },
+        { "id": "d", "label": "GET", "isCorrect": false }
+      ],
+      "explanation": "PUT is used for updating a resource when you know its ID. POST creates new resources, PATCH does partial updates, and GET retrieves resources.",
+      "tags": ["rest", "http-methods", "update"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "api-q2-conditional-create",
+      "stem": "You want to create a Patient resource only if no patient with the same identifier exists. Which approach should you use?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "POST with If-None-Exist header", "isCorrect": true },
+        { "id": "b", "label": "PUT with If-Match header", "isCorrect": false },
+        { "id": "c", "label": "Search first, then POST if not found", "isCorrect": false },
+        { "id": "d", "label": "Use a transaction bundle", "isCorrect": false }
+      ],
+      "explanation": "Conditional create uses POST with If-None-Exist header containing search criteria. If a matching resource exists, no new resource is created. This prevents duplicates atomically.",
+      "tags": ["conditional-create", "if-none-exist", "duplicates"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "api-q3-capability-statement",
+      "stem": "Before implementing FHIR operations against a server, what should you always check first?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "The server's uptime status", "isCorrect": false },
+        { "id": "b", "label": "The CapabilityStatement (metadata)", "isCorrect": true },
+        { "id": "c", "label": "The server's performance metrics", "isCorrect": false },
+        { "id": "d", "label": "The authentication requirements", "isCorrect": false }
+      ],
+      "explanation": "The CapabilityStatement describes what the server supports: resource types, operations, search parameters, FHIR version, and security. Always check this at /metadata endpoint.",
+      "tags": ["capability-statement", "metadata", "server-discovery"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "api-q4-transaction-behavior",
+      "stem": "In a FHIR transaction bundle, what happens if one resource operation fails?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Only the failed operation is rolled back", "isCorrect": false },
+        { "id": "b", "label": "All operations in the bundle are rolled back", "isCorrect": true },
+        { "id": "c", "label": "The failure is ignored", "isCorrect": false },
+        { "id": "d", "label": "The bundle continues processing other operations", "isCorrect": false }
+      ],
+      "explanation": "Transaction bundles are atomic - either all operations succeed or all are rolled back. This ensures data consistency. Use batch bundles if you want partial success processing.",
+      "tags": ["transaction", "bundles", "atomicity"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "api-q5-search-pagination",
+      "stem": "A FHIR search returns a Bundle with 20 results and a 'next' link. What does this indicate?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "There are exactly 20 matching resources", "isCorrect": false },
+        { "id": "b", "label": "There are more results available via pagination", "isCorrect": true },
+        { "id": "c", "label": "The search failed", "isCorrect": false },
+        { "id": "d", "label": "The server is configured incorrectly", "isCorrect": false }
+      ],
+      "explanation": "A 'next' link in the Bundle indicates more results are available. Follow the link to get the next page. Total count may be in Bundle.total if provided by the server.",
+      "tags": ["search", "pagination", "bundle-links"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "api-q6-oauth-scopes",
+      "stem": "Which OAuth 2.0 scope would allow an application to read patient data but not modify it?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "patient/*.write", "isCorrect": false },
+        { "id": "b", "label": "patient/*.read", "isCorrect": true },
+        { "id": "c", "label": "user/*.read", "isCorrect": false },
+        { "id": "d", "label": "system/*.read", "isCorrect": false }
+      ],
+      "explanation": "SMART on FHIR uses scopes like 'patient/*.read' for read-only access to patient data. 'patient/' means data for the current patient context, '*' means all resource types.",
+      "tags": ["oauth", "smart-on-fhir", "scopes", "security"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "api-q7-operation-invocation",
+      "stem": "How do you invoke the '$validate' operation on a specific Patient resource with ID '123'?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "GET /Patient/123/$validate", "isCorrect": false },
+        { "id": "b", "label": "POST /Patient/123/$validate", "isCorrect": true },
+        { "id": "c", "label": "PUT /Patient/123/$validate", "isCorrect": false },
+        { "id": "d", "label": "PATCH /Patient/123/$validate", "isCorrect": false }
+      ],
+      "explanation": "FHIR operations use POST method with the operation name prefixed by '$'. Instance-level operations are invoked on specific resource instances.",
+      "tags": ["operations", "validate", "post"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "api-q8-versioning-support",
+      "stem": "How can you determine if a FHIR server supports resource versioning?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Try to access a versioned resource URL", "isCorrect": false },
+        { "id": "b", "label": "Check the CapabilityStatement for versioning support", "isCorrect": true },
+        { "id": "c", "label": "Look for version headers in responses", "isCorrect": false },
+        { "id": "d", "label": "All FHIR servers support versioning by default", "isCorrect": false }
+      ],
+      "explanation": "The CapabilityStatement indicates versioning support in rest.resource.versioning field. Values include 'no-version', 'versioned', 'versioned-update'.",
+      "tags": ["versioning", "capability-statement", "resource-versions"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "api-q9-batch-vs-transaction",
+      "stem": "What's the key difference between batch and transaction bundles?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Batch bundles are faster", "isCorrect": false },
+        { "id": "b", "label": "Transaction bundles are atomic, batch bundles process independently", "isCorrect": true },
+        { "id": "c", "label": "Batch bundles require authentication", "isCorrect": false },
+        { "id": "d", "label": "Transaction bundles can only contain one operation", "isCorrect": false }
+      ],
+      "explanation": "Transaction bundles are atomic (all-or-nothing), while batch bundles process each entry independently. Transaction guarantees consistency, batch allows partial success.",
+      "tags": ["batch", "transaction", "bundles", "atomicity"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "api-q10-search-modifiers",
+      "stem": "What does the search parameter 'name:exact=John' accomplish?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Case-sensitive exact match on 'John'", "isCorrect": true },
+        { "id": "b", "label": "Sounds-like search for 'John'", "isCorrect": false },
+        { "id": "c", "label": "Partial match containing 'John'", "isCorrect": false },
+        { "id": "d", "label": "Regular expression match", "isCorrect": false }
+      ],
+      "explanation": "The ':exact' modifier performs case-sensitive exact matching. Other modifiers include ':contains' for partial matches and ':phonetic' for sounds-like searches.",
+      "tags": ["search", "modifiers", "exact-match"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "api-q11-conditional-update",
+      "stem": "You want to update a Patient resource only if it hasn't been modified since you last read it. Which approach should you use?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "PUT with If-Match header containing the ETag", "isCorrect": true },
+        { "id": "b", "label": "PUT with If-None-Match header", "isCorrect": false },
+        { "id": "c", "label": "POST with If-Modified-Since header", "isCorrect": false },
+        { "id": "d", "label": "PATCH with If-Unmodified-Since header", "isCorrect": false }
+      ],
+      "explanation": "Conditional update uses PUT with If-Match header containing the ETag from when you read the resource. This prevents overwriting changes made by others (optimistic locking).",
+      "tags": ["conditional-update", "if-match", "etag", "optimistic-locking"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "api-q12-prefer-header",
+      "stem": "What does the 'Prefer: return=representation' header request in a FHIR operation?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Return only the resource ID", "isCorrect": false },
+        { "id": "b", "label": "Return the full updated resource in the response", "isCorrect": true },
+        { "id": "c", "label": "Return an operation outcome only", "isCorrect": false },
+        { "id": "d", "label": "Return minimal response headers", "isCorrect": false }
+      ],
+      "explanation": "Prefer: return=representation requests the server to include the full resource in the response body. Prefer: return=minimal requests just status with minimal data.",
+      "tags": ["prefer-header", "response-control", "representation"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "api-q13-operation-outcome",
+      "stem": "When might a FHIR server return an OperationOutcome resource?",
+      "questionType": "multi_select",
+      "choices": [
+        { "id": "a", "label": "When a resource validation fails", "isCorrect": true },
+        { "id": "b", "label": "When a search returns no results", "isCorrect": false },
+        { "id": "c", "label": "When there are warnings about the operation", "isCorrect": true },
+        { "id": "d", "label": "When an operation completes successfully", "isCorrect": true }
+      ],
+      "explanation": "OperationOutcome can be returned for validation failures, warnings, informational messages, and even successful operations with additional information. It's not typically returned for empty search results (use empty Bundle instead).",
+      "tags": ["operation-outcome", "validation", "warnings"],
+      "difficulty": "hard"
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "quiz": {
+    "slug": "implementation-guides",
+    "title": "Understanding Implementation Guides",
+    "description": "Select profiles and implementation guides based on use cases, understand scope and relationships",
+    "timeLimit": 15,
+    "passingScore": 70,
+    "competencyAreaSlug": "implementation-guides"
+  },
+  "questions": [
+    {
+      "id": "ig-q1-purpose",
+      "stem": "What is the primary purpose of a FHIR Implementation Guide?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "To replace the base FHIR specification", "isCorrect": false },
+        { "id": "b", "label": "To define how FHIR should be used for specific use cases or domains", "isCorrect": true },
+        { "id": "c", "label": "To provide example resources only", "isCorrect": false },
+        { "id": "d", "label": "To define new resource types", "isCorrect": false }
+      ],
+      "explanation": "Implementation Guides provide domain-specific constraints, profiles, value sets, and guidance on how to use FHIR for particular use cases like US Core, cancer reporting, or clinical decision support.",
+      "tags": ["implementation-guides", "purpose", "domain-specific"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "ig-q2-profile-selection",
+      "stem": "You're building a US-based EHR system. Which Patient profile should you likely implement?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Base FHIR Patient resource only", "isCorrect": false },
+        { "id": "b", "label": "US Core Patient Profile", "isCorrect": true },
+        { "id": "c", "label": "International Patient Summary", "isCorrect": false },
+        { "id": "d", "label": "Create your own Patient profile", "isCorrect": false }
+      ],
+      "explanation": "US Core is the foundation implementation guide for US healthcare systems. It defines required elements and constraints for interoperability with US healthcare systems.",
+      "tags": ["us-core", "patient-profile", "selection"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "ig-q3-profile-hierarchy",
+      "stem": "A custom Patient profile derives from US Core Patient Profile, which derives from base Patient. What constraint inheritance applies?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Only the custom profile constraints apply", "isCorrect": false },
+        { "id": "b", "label": "Constraints from all levels in the hierarchy apply", "isCorrect": true },
+        { "id": "c", "label": "Custom profile overrides all parent constraints", "isCorrect": false },
+        { "id": "d", "label": "Only base Patient constraints apply", "isCorrect": false }
+      ],
+      "explanation": "Profile constraints are additive through the inheritance hierarchy. A resource must conform to the base FHIR resource, the intermediate profile (US Core), and the custom profile constraints.",
+      "tags": ["profile-hierarchy", "inheritance", "constraints"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "ig-q4-use-case-scope",
+      "stem": "When should you choose a disease-specific IG (like IHE mCODE for cancer) over a general IG (like US Core)?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Always use disease-specific IGs when available", "isCorrect": false },
+        { "id": "b", "label": "When your use case specifically requires the specialized data elements", "isCorrect": true },
+        { "id": "c", "label": "Only for research applications", "isCorrect": false },
+        { "id": "d", "label": "Disease-specific IGs are always better", "isCorrect": false }
+      ],
+      "explanation": "Choose specialized IGs when your use case requires the specific data elements, workflows, or constraints they define. General IGs like US Core are suitable for broad interoperability.",
+      "tags": ["use-case-selection", "specialized-igs", "mcODE"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "ig-q5-conformance-resources",
+      "stem": "Which conformance resources are typically found in Implementation Guides?",
+      "questionType": "multi_select",
+      "choices": [
+        { "id": "a", "label": "StructureDefinition (profiles)", "isCorrect": true },
+        { "id": "b", "label": "ValueSet and CodeSystem", "isCorrect": true },
+        { "id": "c", "label": "Patient and Observation instances", "isCorrect": false },
+        { "id": "d", "label": "CapabilityStatement", "isCorrect": true }
+      ],
+      "explanation": "IGs contain conformance resources that define how to use FHIR: StructureDefinitions (profiles), ValueSets, CodeSystems, CapabilityStatements, SearchParameters, and OperationDefinitions.",
+      "tags": ["conformance-resources", "structure-definition", "value-sets"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "ig-q6-dependency-management",
+      "stem": "Your IG depends on US Core 5.0.1. What happens if you try to use it with US Core 4.0.0?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "It will work without issues", "isCorrect": false },
+        { "id": "b", "label": "There may be compatibility issues due to version differences", "isCorrect": true },
+        { "id": "c", "label": "It will automatically upgrade US Core", "isCorrect": false },
+        { "id": "d", "label": "Version dependencies don't matter", "isCorrect": false }
+      ],
+      "explanation": "IG dependencies specify required versions for compatibility. Version mismatches can cause validation errors, missing elements, or changed constraints. Always use compatible versions.",
+      "tags": ["dependencies", "versioning", "compatibility"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "ig-q7-canonical-urls",
+      "stem": "What is the purpose of canonical URLs in profiles and implementation guides?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "To download the profile from the internet", "isCorrect": false },
+        { "id": "b", "label": "To provide globally unique identifiers for profiles", "isCorrect": true },
+        { "id": "c", "label": "To specify the FHIR server endpoint", "isCorrect": false },
+        { "id": "d", "label": "To indicate the profile's author", "isCorrect": false }
+      ],
+      "explanation": "Canonical URLs provide globally unique, stable identifiers for profiles and other conformance resources. They enable unambiguous references and version management across systems.",
+      "tags": ["canonical-urls", "identifiers", "profiles"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "ig-q8-must-support-interpretation",
+      "stem": "In an Implementation Guide, mustSupport flags are defined differently for different systems. What should implementers do?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Ignore mustSupport flags entirely", "isCorrect": false },
+        { "id": "b", "label": "Read the IG's specific mustSupport definition and requirements", "isCorrect": true },
+        { "id": "c", "label": "Apply the same mustSupport rules for all IGs", "isCorrect": false },
+        { "id": "d", "label": "Only implement mustSupport for servers, not clients", "isCorrect": false }
+      ],
+      "explanation": "mustSupport interpretation is IG-specific. Each IG should define what mustSupport means for implementers (servers and clients). Always read the IG's mustSupport documentation.",
+      "tags": ["mustSupport", "ig-specific", "requirements"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "ig-q9-extension-context",
+      "stem": "An IG defines an extension that can only be used on Patient resources. Where is this constraint specified?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "In the extension's documentation", "isCorrect": false },
+        { "id": "b", "label": "In the extension's StructureDefinition context element", "isCorrect": true },
+        { "id": "c", "label": "In the Patient profile", "isCorrect": false },
+        { "id": "d", "label": "Extensions can be used anywhere", "isCorrect": false }
+      ],
+      "explanation": "The StructureDefinition.context element defines where an extension can be used. It specifies the resource types, elements, or paths where the extension is valid.",
+      "tags": ["extensions", "context", "structure-definition"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "ig-q10-testing-conformance",
+      "stem": "How should you verify that your implementation conforms to an Implementation Guide?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Manual review of the IG documentation", "isCorrect": false },
+        { "id": "b", "label": "Use the IG's test plan and validation tools", "isCorrect": true },
+        { "id": "c", "label": "Test against any FHIR server", "isCorrect": false },
+        { "id": "d", "label": "Conformance testing is optional", "isCorrect": false }
+      ],
+      "explanation": "Well-defined IGs include test plans, example resources, and validation tools. Use these along with FHIR validators configured with the IG's profiles to verify conformance.",
+      "tags": ["testing", "conformance", "validation"],
+      "difficulty": "medium"
+    }
+  ]
+}

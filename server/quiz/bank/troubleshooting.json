@@ -1,0 +1,180 @@
+{
+  "quiz": {
+    "slug": "troubleshooting",
+    "title": "Troubleshooting and Validation",
+    "description": "Validation errors, REST API server errors, and profile rule application",
+    "timeLimit": 20,
+    "passingScore": 70,
+    "competencyAreaSlug": "troubleshooting"
+  },
+  "questions": [
+    {
+      "id": "trouble-q1-validation-error",
+      "stem": "A Patient resource fails validation with 'Element 'Patient.name' has minimum cardinality 1'. What does this mean?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "The name field contains invalid characters", "isCorrect": false },
+        { "id": "b", "label": "The Patient resource is missing a name element", "isCorrect": true },
+        { "id": "c", "label": "The name is too short", "isCorrect": false },
+        { "id": "d", "label": "Multiple names are provided when only one is allowed", "isCorrect": false }
+      ],
+      "explanation": "Minimum cardinality 1 means at least one instance is required. The error indicates Patient.name is missing entirely, violating the requirement for at least one name.",
+      "tags": ["validation", "cardinality", "patient", "names"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "trouble-q2-http-403",
+      "stem": "Your FHIR client receives a 403 Forbidden error when trying to read a Patient resource. What's the most likely cause?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "The resource doesn't exist", "isCorrect": false },
+        { "id": "b", "label": "Insufficient authorization scope or permissions", "isCorrect": true },
+        { "id": "c", "label": "Invalid JSON format", "isCorrect": false },
+        { "id": "d", "label": "Server is down", "isCorrect": false }
+      ],
+      "explanation": "403 Forbidden indicates the request was valid but the client lacks permission. Check OAuth scopes, access tokens, or server authorization policies.",
+      "tags": ["http-errors", "403", "authorization", "permissions"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "trouble-q3-circular-references",
+      "stem": "Your Bundle fails processing with 'Circular reference detected'. What should you check?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Resource IDs are unique within the bundle", "isCorrect": false },
+        { "id": "b", "label": "Reference chains don't loop back to themselves", "isCorrect": true },
+        { "id": "c", "label": "All references use absolute URLs", "isCorrect": false },
+        { "id": "d", "label": "Bundle type is set to 'transaction'", "isCorrect": false }
+      ],
+      "explanation": "Circular references occur when Resource A references Resource B, which references Resource C, which references back to Resource A. Check reference chains for loops.",
+      "tags": ["bundles", "circular-references", "validation"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "trouble-q4-invariant-violation",
+      "stem": "An Observation fails validation with 'Invariant obs-7 violated: If code is the same as a component code then the value element associated with the code SHALL NOT be present'. What's wrong?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "The Observation.code is missing", "isCorrect": false },
+        { "id": "b", "label": "The same code appears in both Observation.code and component.code with conflicting values", "isCorrect": true },
+        { "id": "c", "label": "The component array is empty", "isCorrect": false },
+        { "id": "d", "label": "Invalid code system used", "isCorrect": false }
+      ],
+      "explanation": "Invariant obs-7 prevents duplicate representation. If the main Observation and a component have the same code, only the component should have a value, not both.",
+      "tags": ["invariants", "observation", "components", "duplicate-codes"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "trouble-q5-terminology-error",
+      "stem": "You receive 'Code 'XYZ' is not valid in value set http://example.org/ValueSet/DiagnosticCodes'. How should you troubleshoot?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Use a different code from the same system", "isCorrect": false },
+        { "id": "b", "label": "Check if the value set includes the code system and verify code validity", "isCorrect": true },
+        { "id": "c", "label": "Remove the code and use text only", "isCorrect": false },
+        { "id": "d", "label": "Change the value set reference", "isCorrect": false }
+      ],
+      "explanation": "First verify the code exists in its code system, then check if the value set includes that code system, and finally confirm the specific code is part of the value set expansion.",
+      "tags": ["terminology", "value-sets", "code-validation"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "trouble-q6-reference-resolution",
+      "stem": "Your Bundle processing fails with 'Unable to resolve reference Patient/nonexistent'. What are possible causes?",
+      "questionType": "multi_select",
+      "choices": [
+        { "id": "a", "label": "The referenced Patient ID doesn't exist on the server", "isCorrect": true },
+        { "id": "b", "label": "The Bundle doesn't contain the referenced Patient", "isCorrect": true },
+        { "id": "c", "label": "The reference uses wrong syntax", "isCorrect": false },
+        { "id": "d", "label": "Bundle processing order is incorrect", "isCorrect": true }
+      ],
+      "explanation": "Reference resolution can fail if: 1) The target resource doesn't exist on server, 2) Transaction bundles don't contain the referenced resource, 3) Processing order matters in dependencies.",
+      "tags": ["references", "bundles", "resolution-errors"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "trouble-q7-profile-conformance",
+      "stem": "A resource validation reports 'Profile constraint violated: Patient.birthDate is required'. The resource has Patient.birthDate present. What should you check?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "The birthDate format is invalid", "isCorrect": true },
+        { "id": "b", "label": "The profile URL is wrong", "isCorrect": false },
+        { "id": "c", "label": "The patient is too old", "isCorrect": false },
+        { "id": "d", "label": "Multiple birthDates are provided", "isCorrect": false }
+      ],
+      "explanation": "If the validator says a present field is 'required', the field likely has an invalid format. Check date format (YYYY-MM-DD), data types, and value constraints.",
+      "tags": ["profiles", "validation", "date-format", "constraints"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "trouble-q8-http-412",
+      "stem": "Your conditional update returns 412 Precondition Failed. What happened?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "The resource doesn't exist", "isCorrect": false },
+        { "id": "b", "label": "The If-Match ETag doesn't match current resource version", "isCorrect": true },
+        { "id": "c", "label": "Invalid JSON in request body", "isCorrect": false },
+        { "id": "d", "label": "Server doesn't support conditional updates", "isCorrect": false }
+      ],
+      "explanation": "412 Precondition Failed in conditional updates means the ETag in If-Match header doesn't match the current resource version. The resource was modified by someone else.",
+      "tags": ["http-errors", "412", "conditional-update", "etag"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "trouble-q9-slicing-error",
+      "stem": "Validation fails with 'Unable to match slice discriminator for Patient.identifier'. What should you verify?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "All identifiers have unique values", "isCorrect": false },
+        { "id": "b", "label": "Identifier elements match the slice discriminator rules", "isCorrect": true },
+        { "id": "c", "label": "Identifier array isn't empty", "isCorrect": false },
+        { "id": "d", "label": "System URLs are absolute", "isCorrect": false }
+      ],
+      "explanation": "Slice discriminators define how to match array elements to slices (often by identifier.system or identifier.type). Ensure identifier elements have the expected discriminator values.",
+      "tags": ["slicing", "discriminators", "identifiers", "profiles"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "trouble-q10-json-parse-error",
+      "stem": "Your FHIR client gets 'Unexpected token at position 147' when parsing server response. What's the likely issue?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Server returned HTML error page instead of JSON", "isCorrect": true },
+        { "id": "b", "label": "Response is too large", "isCorrect": false },
+        { "id": "c", "label": "Network timeout occurred", "isCorrect": false },
+        { "id": "d", "label": "Wrong HTTP method used", "isCorrect": false }
+      ],
+      "explanation": "JSON parse errors often occur when servers return HTML error pages (500 errors, maintenance pages) instead of JSON. Check the actual response content and HTTP status.",
+      "tags": ["json", "parsing", "error-pages", "debugging"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "trouble-q11-operation-outcome-severity",
+      "stem": "An OperationOutcome contains issues with severity 'warning' and 'error'. How should your application respond?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Ignore warnings, handle only errors", "isCorrect": false },
+        { "id": "b", "label": "Treat warnings as errors", "isCorrect": false },
+        { "id": "c", "label": "Fail the operation due to errors, log warnings", "isCorrect": true },
+        { "id": "d", "label": "Retry the operation", "isCorrect": false }
+      ],
+      "explanation": "'Error' severity indicates the operation failed and must be addressed. 'Warning' provides important information but doesn't prevent success. Handle errors, log warnings for review.",
+      "tags": ["operation-outcome", "severity", "error-handling"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "trouble-q12-must-support-debugging",
+      "stem": "Your system fails to process a resource because a mustSupport element is missing. What should you implement?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Reject all resources missing mustSupport elements", "isCorrect": false },
+        { "id": "b", "label": "Implement meaningful handling for all mustSupport elements", "isCorrect": true },
+        { "id": "c", "label": "Make all mustSupport elements required", "isCorrect": false },
+        { "id": "d", "label": "Ignore mustSupport requirements", "isCorrect": false }
+      ],
+      "explanation": "mustSupport means your system must handle the element meaningfully when present, not that it's always required. Implement processing logic for all mustSupport elements in your profiles.",
+      "tags": ["mustSupport", "profiles", "implementation", "requirements"],
+      "difficulty": "hard"
+    }
+  ]
+}

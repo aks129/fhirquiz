@@ -1,0 +1,180 @@
+{
+  "quiz": {
+    "slug": "implementation",
+    "title": "Implementation",
+    "description": "Using extensions, elements, search parameters, operations, and terminology in practice",
+    "timeLimit": 25,
+    "passingScore": 70,
+    "competencyAreaSlug": "implementation"
+  },
+  "questions": [
+    {
+      "id": "impl-q1-extension-definition",
+      "stem": "When creating a custom extension for patient social determinants, what's the first step?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Add the extension directly to Patient resources", "isCorrect": false },
+        { "id": "b", "label": "Define the extension in a StructureDefinition", "isCorrect": true },
+        { "id": "c", "label": "Register the extension with HL7", "isCorrect": false },
+        { "id": "d", "label": "Create a new resource type", "isCorrect": false }
+      ],
+      "explanation": "Extensions must be formally defined in a StructureDefinition before use. This defines the extension's URL, data type, cardinality, and meaning for consistent implementation.",
+      "tags": ["extensions", "structure-definition", "social-determinants"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "impl-q2-terminology-server",
+      "stem": "Your implementation needs to validate diagnostic codes from ICD-10. What's the recommended approach?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Hardcode all ICD-10 codes in your application", "isCorrect": false },
+        { "id": "b", "label": "Use a FHIR terminology server with $validate-code operation", "isCorrect": true },
+        { "id": "c", "label": "Download ICD-10 files and validate locally", "isCorrect": false },
+        { "id": "d", "label": "Skip validation for performance", "isCorrect": false }
+      ],
+      "explanation": "FHIR terminology servers provide standardized validation using operations like $validate-code. This ensures up-to-date code systems and consistent validation across implementations.",
+      "tags": ["terminology", "validation", "icd-10", "terminology-server"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "impl-q3-custom-search",
+      "stem": "You need to search for patients by a custom identifier type not supported by the server. What should you implement?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Use the generic 'identifier' search parameter with system and value", "isCorrect": true },
+        { "id": "b", "label": "Create a new search parameter and ask the server to support it", "isCorrect": false },
+        { "id": "c", "label": "Use text search instead", "isCorrect": false },
+        { "id": "d", "label": "Retrieve all patients and filter client-side", "isCorrect": false }
+      ],
+      "explanation": "The standard 'identifier' search parameter supports system and value modifiers (e.g., identifier=http://hospital.org/mrn|12345) to search for specific identifier types without custom parameters.",
+      "tags": ["search", "identifiers", "custom-identifiers"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "impl-q4-operation-parameters",
+      "stem": "When implementing a custom FHIR operation that accepts multiple patient IDs, which parameter type should you use?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "A single string parameter with comma-separated IDs", "isCorrect": false },
+        { "id": "b", "label": "Multiple Reference parameters", "isCorrect": true },
+        { "id": "c", "label": "A Bundle parameter containing Patient resources", "isCorrect": false },
+        { "id": "d", "label": "An array of string parameters", "isCorrect": false }
+      ],
+      "explanation": "Use multiple Reference parameters with max cardinality of * for accepting multiple resource references. This follows FHIR conventions and enables proper validation.",
+      "tags": ["operations", "parameters", "references", "custom-operations"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "impl-q5-profile-validation",
+      "stem": "Your system receives a Patient resource that claims to conform to 'http://example.org/fhir/StructureDefinition/MyPatient'. How should you validate it?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Trust the claim and proceed", "isCorrect": false },
+        { "id": "b", "label": "Validate against the profile using $validate operation", "isCorrect": true },
+        { "id": "c", "label": "Only check required fields are present", "isCorrect": false },
+        { "id": "d", "label": "Validate JSON structure only", "isCorrect": false }
+      ],
+      "explanation": "Use the $validate operation with the profile parameter to validate resources against specific profiles. Don't trust profile claims without validation.",
+      "tags": ["validation", "profiles", "structure-definition"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "impl-q6-batch-processing",
+      "stem": "You're implementing a bulk data import that processes 10,000 Patient resources. What's the most efficient approach?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Send individual POST requests for each resource", "isCorrect": false },
+        { "id": "b", "label": "Use batch bundles with appropriate sizing", "isCorrect": true },
+        { "id": "c", "label": "Create one massive transaction bundle", "isCorrect": false },
+        { "id": "d", "label": "Use the $import operation", "isCorrect": false }
+      ],
+      "explanation": "Batch bundles allow efficient bulk processing while avoiding server timeouts. Size bundles appropriately (typically 50-500 resources) based on server capabilities and resource complexity.",
+      "tags": ["batch", "bulk-import", "performance", "bundles"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "impl-q7-error-handling",
+      "stem": "Your application receives a 422 Unprocessable Entity response when creating a Patient resource. What should you do?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Retry the request immediately", "isCorrect": false },
+        { "id": "b", "label": "Check the OperationOutcome for validation errors", "isCorrect": true },
+        { "id": "c", "label": "Log the error and skip the resource", "isCorrect": false },
+        { "id": "d", "label": "Convert to a different format and retry", "isCorrect": false }
+      ],
+      "explanation": "422 indicates validation errors. The OperationOutcome in the response provides specific details about what validation failed, allowing you to fix the resource.",
+      "tags": ["error-handling", "operation-outcome", "validation", "422"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "impl-q8-include-implementation",
+      "stem": "When implementing search with _include, what should your system do if the referenced resource doesn't exist?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Return an error", "isCorrect": false },
+        { "id": "b", "label": "Include empty placeholders", "isCorrect": false },
+        { "id": "c", "label": "Return the primary resource without the missing includes", "isCorrect": true },
+        { "id": "d", "label": "Create the missing resource automatically", "isCorrect": false }
+      ],
+      "explanation": "_include is a hint to the server. If referenced resources are missing or not accessible, return the primary search results without the includes. Don't fail the entire search.",
+      "tags": ["search", "include", "missing-references"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "impl-q9-coding-display",
+      "stem": "In your Observation resources, when should you populate the Coding.display field?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Never - display is automatically generated", "isCorrect": false },
+        { "id": "b", "label": "Always, even if it might be wrong", "isCorrect": false },
+        { "id": "c", "label": "Only when you're confident it matches the code system", "isCorrect": true },
+        { "id": "d", "label": "Only for custom codes", "isCorrect": false }
+      ],
+      "explanation": "Only populate display when you're confident it's correct for the code system. Incorrect displays can mislead users. Let terminology servers provide authoritative displays when possible.",
+      "tags": ["coding", "display", "terminology"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "impl-q10-subscription-criteria",
+      "stem": "You want to be notified when new Observation resources are created for patients in your care. How should you set up the Subscription?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "criteria: 'Observation'", "isCorrect": false },
+        { "id": "b", "label": "criteria: 'Observation?_lastUpdated=gt[now]'", "isCorrect": false },
+        { "id": "c", "label": "criteria: 'Observation?patient=[patient-list]'", "isCorrect": true },
+        { "id": "d", "label": "criteria: 'Patient?_has:Observation'", "isCorrect": false }
+      ],
+      "explanation": "Subscription criteria should be specific enough to avoid unnecessary notifications. Use patient parameters to limit to your patients. The exact syntax depends on your server's subscription support.",
+      "tags": ["subscriptions", "criteria", "patient-specific"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "impl-q11-conditional-reference",
+      "stem": "In a Bundle, you need to reference a Patient that might already exist on the server. What's the best approach?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Always create a new Patient resource", "isCorrect": false },
+        { "id": "b", "label": "Use conditional references with identifier search", "isCorrect": true },
+        { "id": "c", "label": "Search first, then reference by ID", "isCorrect": false },
+        { "id": "d", "label": "Use contained Patient resources", "isCorrect": false }
+      ],
+      "explanation": "Conditional references like 'Patient?identifier=system|value' allow the server to resolve to existing patients or create new ones as needed, avoiding duplicates.",
+      "tags": ["conditional-references", "bundles", "patient-resolution"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "impl-q12-security-labels",
+      "stem": "You're implementing access controls for sensitive mental health data. Which FHIR approach should you use?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Create separate servers for sensitive data", "isCorrect": false },
+        { "id": "b", "label": "Use security labels (meta.security) on resources", "isCorrect": true },
+        { "id": "c", "label": "Encrypt the entire resource", "isCorrect": false },
+        { "id": "d", "label": "Use custom extensions for access control", "isCorrect": false }
+      ],
+      "explanation": "Security labels in meta.security provide standard ways to mark sensitive data. Common labels include TABOO, PSY, HIV for different sensitivity levels that access control systems can interpret.",
+      "tags": ["security", "labels", "sensitive-data", "access-control"],
+      "difficulty": "hard"
+    }
+  ]
+}

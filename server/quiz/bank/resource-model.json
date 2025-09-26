@@ -1,0 +1,180 @@
+{
+  "quiz": {
+    "slug": "resource-model",
+    "title": "Resource Model and Structure",
+    "description": "FHIR resource selection, element suitability, search parameters, extensions, and terminology",
+    "timeLimit": 30,
+    "passingScore": 70,
+    "competencyAreaSlug": "resource-model"
+  },
+  "questions": [
+    {
+      "id": "rm-q1-patient-identifier",
+      "stem": "A hospital needs to store multiple identifier types for patients (SSN, Medical Record Number, Insurance ID). Which FHIR element should be used?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Patient.id field", "isCorrect": false },
+        { "id": "b", "label": "Patient.identifier array", "isCorrect": true },
+        { "id": "c", "label": "Patient.extension for each type", "isCorrect": false },
+        { "id": "d", "label": "Separate Patient resources", "isCorrect": false }
+      ],
+      "explanation": "Patient.identifier is an array designed to hold multiple business identifiers. Each identifier can have a type, system, and value to differentiate between SSN, MRN, etc.",
+      "tags": ["patient", "identifiers", "business-identifiers"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "rm-q2-observation-categories",
+      "stem": "When recording vital signs, laboratory results, and survey responses, which approach follows FHIR best practices?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Use different resource types for each category", "isCorrect": false },
+        { "id": "b", "label": "Use Observation resources with appropriate category codes", "isCorrect": true },
+        { "id": "c", "label": "Use DiagnosticReport for all measurements", "isCorrect": false },
+        { "id": "d", "label": "Create custom resources for each type", "isCorrect": false }
+      ],
+      "explanation": "Observation resources can represent various types of clinical data. Use the category element with standard codes (vital-signs, laboratory, survey) to distinguish between different types of observations.",
+      "tags": ["observation", "categories", "clinical-data"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "rm-q3-search-parameters",
+      "stem": "To find all Observations for a specific patient from the last 6 months, which search parameters would you use?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "patient=[id]&date=ge2024-01", "isCorrect": false },
+        { "id": "b", "label": "subject=[patient-id]&date=ge[6-months-ago]", "isCorrect": true },
+        { "id": "c", "label": "_lastUpdated=ge[date]&patient=[id]", "isCorrect": false },
+        { "id": "d", "label": "encounter.patient=[id]&period=ge[date]", "isCorrect": false }
+      ],
+      "explanation": "Use 'subject' to specify the patient and 'date' with 'ge' (greater than or equal) prefix for the time range. The subject parameter works for all resource types that reference patients.",
+      "tags": ["search", "parameters", "date-range", "patient-data"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "rm-q4-terminology-binding",
+      "stem": "A coded element in FHIR has a 'required' binding strength. What does this mean for implementation?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "The code is optional and can be omitted", "isCorrect": false },
+        { "id": "b", "label": "Only codes from the specified value set are allowed", "isCorrect": true },
+        { "id": "c", "label": "Codes can be extended with additional values", "isCorrect": false },
+        { "id": "d", "label": "Text can be used instead of codes", "isCorrect": false }
+      ],
+      "explanation": "'Required' binding means only codes from the specified value set can be used. This ensures interoperability but limits flexibility. Other binding strengths (extensible, preferred, example) offer more flexibility.",
+      "tags": ["terminology", "binding-strength", "value-sets"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "rm-q5-extensions-usage",
+      "stem": "When should you use FHIR extensions instead of core resource elements?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Always use extensions for custom data", "isCorrect": false },
+        { "id": "b", "label": "When core elements don't meet your specific use case", "isCorrect": true },
+        { "id": "c", "label": "Only for non-clinical data", "isCorrect": false },
+        { "id": "d", "label": "Extensions should be avoided", "isCorrect": false }
+      ],
+      "explanation": "Use extensions only when core FHIR elements don't adequately represent your data. Always check if existing elements can be used first. Extensions should be defined in implementation guides for consistency.",
+      "tags": ["extensions", "core-elements", "customization"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "rm-q6-reference-types",
+      "stem": "Which approach correctly represents a reference from an Observation to its associated Patient?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Observation.subject.reference = 'Patient/123'", "isCorrect": true },
+        { "id": "b", "label": "Observation.patient = '123'", "isCorrect": false },
+        { "id": "c", "label": "Observation.subject.id = '123'", "isCorrect": false },
+        { "id": "d", "label": "Observation.patientReference = 'Patient/123'", "isCorrect": false }
+      ],
+      "explanation": "References in FHIR use the Reference data type with a 'reference' field containing the resource type and ID (e.g., 'Patient/123'). The subject field is the correct element for patient references in Observation.",
+      "tags": ["references", "observation", "patient"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "rm-q7-cardinality-rules",
+      "stem": "A FHIR element has cardinality '1..*'. What does this mean for your implementation?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "The element is optional", "isCorrect": false },
+        { "id": "b", "label": "At least one value must be provided", "isCorrect": true },
+        { "id": "c", "label": "Only one value is allowed", "isCorrect": false },
+        { "id": "d", "label": "The element can be empty", "isCorrect": false }
+      ],
+      "explanation": "Cardinality '1..*' means one or more values are required. '0..1' is optional single value, '1..1' is required single value, '0..*' is optional multiple values.",
+      "tags": ["cardinality", "validation", "requirements"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "rm-q8-contained-resources",
+      "stem": "When should you use contained resources within a FHIR resource?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Always to improve performance", "isCorrect": false },
+        { "id": "b", "label": "When the contained resource has no independent existence", "isCorrect": true },
+        { "id": "c", "label": "To avoid creating separate resources", "isCorrect": false },
+        { "id": "d", "label": "For all related resources", "isCorrect": false }
+      ],
+      "explanation": "Use contained resources only when the resource has no meaningful existence outside the containing resource. Most resources should be separate with references. Contained resources cannot be referenced by other resources.",
+      "tags": ["contained-resources", "resource-design", "references"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "rm-q9-coding-vs-codeableconcept",
+      "stem": "What's the difference between Coding and CodeableConcept data types in FHIR?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Coding is for multiple codes, CodeableConcept is for single codes", "isCorrect": false },
+        { "id": "b", "label": "CodeableConcept can contain multiple Coding elements plus text", "isCorrect": true },
+        { "id": "c", "label": "They are the same thing", "isCorrect": false },
+        { "id": "d", "label": "Coding is deprecated, use CodeableConcept", "isCorrect": false }
+      ],
+      "explanation": "CodeableConcept is a higher-level construct that can contain multiple Coding elements (allowing translations between code systems) plus a text description. Coding represents a single code from one system.",
+      "tags": ["coding", "codeableconcept", "terminology"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "rm-q10-profile-conformance",
+      "stem": "Your implementation uses a Patient profile that marks Patient.gender as required (cardinality 1..1). What must you ensure?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "All patients must have a gender value", "isCorrect": true },
+        { "id": "b", "label": "Gender can be omitted for privacy", "isCorrect": false },
+        { "id": "c", "label": "Use 'unknown' for missing values", "isCorrect": false },
+        { "id": "d", "label": "The profile requirement can be ignored", "isCorrect": false }
+      ],
+      "explanation": "Profile constraints are binding. If a profile requires gender (1..1), all Patient resources must include a gender value. However, FHIR R4 includes 'unknown' as a valid gender value if the actual gender is unknown.",
+      "tags": ["profiles", "constraints", "patient", "gender"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "rm-q11-mustSupport-meaning",
+      "stem": "In a FHIR profile, an element is marked with 'mustSupport=true'. What does this mean for implementers?",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "The element must always be present", "isCorrect": false },
+        { "id": "b", "label": "The system must be able to handle this element meaningfully", "isCorrect": true },
+        { "id": "c", "label": "The element cannot be modified", "isCorrect": false },
+        { "id": "d", "label": "The element must be validated", "isCorrect": false }
+      ],
+      "explanation": "mustSupport means the system must support the element if it's present - can store, retrieve, process, and/or display it meaningfully. It doesn't require the element to always be present.",
+      "tags": ["mustSupport", "profiles", "implementation"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "rm-q12-slicing-concept",
+      "stem": "FHIR slicing is used to:",
+      "questionType": "single_choice",
+      "choices": [
+        { "id": "a", "label": "Split large resources into smaller ones", "isCorrect": false },
+        { "id": "b", "label": "Define constraints on array elements based on distinguishing characteristics", "isCorrect": true },
+        { "id": "c", "label": "Remove sensitive data from resources", "isCorrect": false },
+        { "id": "d", "label": "Create multiple versions of a resource", "isCorrect": false }
+      ],
+      "explanation": "Slicing allows you to define specific constraints on different 'slices' of an array based on discriminator values. For example, slicing Patient.identifier by type to have specific rules for SSN vs MRN.",
+      "tags": ["slicing", "profiles", "arrays", "constraints"],
+      "difficulty": "hard"
+    }
+  ]
+}
