@@ -3,6 +3,8 @@ import { type User, type InsertUser, type FhirServer, type InsertFhirServer,
          type Artifact, type InsertArtifact, type Quiz, type InsertQuiz,
          type Question, type InsertQuestion, type Choice, type InsertChoice,
          type QuizAttempt, type InsertQuizAttempt, type QuizAnswer, type InsertQuizAnswer,
+         type CompetencyArea, type InsertCompetencyArea, type StudyProgress, type InsertStudyProgress,
+         type ExamAnalytics, type InsertExamAnalytics,
          type ByodSession, type InsertByodSession, type ByodObservation, type InsertByodObservation,
          type GeneratedApp, type InsertGeneratedApp, type FeatureFlag, type InsertFeatureFlag,
          type SimulatorHistory, type InsertSimulatorHistory, type SimulatorCollection, type InsertSimulatorCollection } from "@shared/schema";
@@ -57,6 +59,21 @@ export interface IStorage {
   getQuizAnswersByAttemptId(attemptId: string): Promise<QuizAnswer[]>;
   createQuizAnswer(answer: InsertQuizAnswer): Promise<QuizAnswer>;
   
+  // Competency area operations
+  getCompetencyAreas(): Promise<CompetencyArea[]>;
+  getCompetencyArea(id: string): Promise<CompetencyArea | undefined>;
+  getCompetencyAreaBySlug(slug: string): Promise<CompetencyArea | undefined>;
+  createCompetencyArea(area: InsertCompetencyArea): Promise<CompetencyArea>;
+  
+  // Study progress operations
+  getStudyProgress(sessionId: string): Promise<StudyProgress[]>;
+  getStudyProgressByCompetency(sessionId: string, competencyAreaId: string): Promise<StudyProgress | undefined>;
+  updateStudyProgress(progress: InsertStudyProgress): Promise<StudyProgress>;
+  
+  // Exam analytics operations
+  getExamAnalytics(attemptId: string): Promise<ExamAnalytics[]>;
+  createExamAnalytics(analytics: InsertExamAnalytics): Promise<ExamAnalytics>;
+  
   // BYOD operations
   getByodSessions(sessionId: string): Promise<ByodSession[]>;
   createByodSession(session: InsertByodSession): Promise<ByodSession>;
@@ -103,6 +120,9 @@ export class MemStorage implements IStorage {
   private featureFlags: Map<string, FeatureFlag>;
   private simulatorHistory: Map<string, SimulatorHistory>;
   private simulatorCollections: Map<string, SimulatorCollection>;
+  private competencyAreas: Map<string, CompetencyArea>;
+  private studyProgress: Map<string, StudyProgress>;
+  private examAnalytics: Map<string, ExamAnalytics>;
 
   constructor() {
     this.users = new Map();
@@ -121,10 +141,14 @@ export class MemStorage implements IStorage {
     this.featureFlags = new Map();
     this.simulatorHistory = new Map();
     this.simulatorCollections = new Map();
+    this.competencyAreas = new Map();
+    this.studyProgress = new Map();
+    this.examAnalytics = new Map();
     
     // Seed with default FHIR servers, quizzes, and feature flags
     this.seedFhirServers();
     this.seedFeatureFlags();
+    this.seedCompetencyAreas();
     // Seed quizzes asynchronously (don't await in constructor)
     this.seedQuizzes().catch(console.error);
   }
@@ -671,6 +695,60 @@ export class MemStorage implements IStorage {
     });
   }
 
+  private seedCompetencyAreas() {
+    const competencyAreas: CompetencyArea[] = [
+      {
+        id: randomUUID(),
+        slug: "implementation-guides",
+        name: "Understanding Implementation Guides",
+        description: "Select profiles and implementation guides based on use cases, understand scope and relationships",
+        minPercentage: 4,
+        maxPercentage: 8,
+        order: 1,
+      },
+      {
+        id: randomUUID(),
+        slug: "api-behavior",
+        name: "FHIR API Behavior",
+        description: "Exchange paradigms, RESTful methods, operations, capability statements, bundles, safety and security",
+        minPercentage: 19,
+        maxPercentage: 33,
+        order: 2,
+      },
+      {
+        id: randomUUID(),
+        slug: "resource-model",
+        name: "Resource Model and Structure",
+        description: "Resource selection, element suitability, search parameters, extensions, and terminology",
+        minPercentage: 25,
+        maxPercentage: 33,
+        order: 3,
+      },
+      {
+        id: randomUUID(),
+        slug: "implementation",
+        name: "Implementation",
+        description: "Using extensions, elements, search parameters, operations, and terminology in practice",
+        minPercentage: 19,
+        maxPercentage: 29,
+        order: 4,
+      },
+      {
+        id: randomUUID(),
+        slug: "troubleshooting",
+        name: "Troubleshooting and Validation",
+        description: "Validation errors, REST API server errors, and profile rule application",
+        minPercentage: 13,
+        maxPercentage: 19,
+        order: 5,
+      },
+    ];
+
+    competencyAreas.forEach(area => {
+      this.competencyAreas.set(area.id, area);
+    });
+  }
+
   async getFeatureFlags(): Promise<FeatureFlag[]> {
     return Array.from(this.featureFlags.values());
   }
@@ -749,6 +827,84 @@ export class MemStorage implements IStorage {
 
   async deleteSimulatorCollection(id: string): Promise<void> {
     this.simulatorCollections.delete(id);
+  }
+
+  // Competency area operations
+  async getCompetencyAreas(): Promise<CompetencyArea[]> {
+    return Array.from(this.competencyAreas.values()).sort((a, b) => a.order - b.order);
+  }
+
+  async getCompetencyArea(id: string): Promise<CompetencyArea | undefined> {
+    return this.competencyAreas.get(id);
+  }
+
+  async getCompetencyAreaBySlug(slug: string): Promise<CompetencyArea | undefined> {
+    return Array.from(this.competencyAreas.values()).find(area => area.slug === slug);
+  }
+
+  async createCompetencyArea(insertArea: InsertCompetencyArea): Promise<CompetencyArea> {
+    const id = randomUUID();
+    const area: CompetencyArea = {
+      ...insertArea,
+      id,
+    };
+    this.competencyAreas.set(id, area);
+    return area;
+  }
+
+  // Study progress operations
+  async getStudyProgress(sessionId: string): Promise<StudyProgress[]> {
+    return Array.from(this.studyProgress.values())
+      .filter(p => p.sessionId === sessionId || p.userId === sessionId);
+  }
+
+  async getStudyProgressByCompetency(sessionId: string, competencyAreaId: string): Promise<StudyProgress | undefined> {
+    return Array.from(this.studyProgress.values())
+      .find(p => (p.sessionId === sessionId || p.userId === sessionId) && p.competencyAreaId === competencyAreaId);
+  }
+
+  async updateStudyProgress(insertProgress: InsertStudyProgress): Promise<StudyProgress> {
+    // Find existing progress or create new
+    const existing = await this.getStudyProgressByCompetency(
+      insertProgress.sessionId || insertProgress.userId || '',
+      insertProgress.competencyAreaId || ''
+    );
+
+    if (existing) {
+      const updated: StudyProgress = {
+        ...existing,
+        ...insertProgress,
+        lastStudiedAt: new Date(),
+      };
+      this.studyProgress.set(existing.id, updated);
+      return updated;
+    } else {
+      const id = randomUUID();
+      const progress: StudyProgress = {
+        ...insertProgress,
+        id,
+        createdAt: new Date(),
+        lastStudiedAt: new Date(),
+      };
+      this.studyProgress.set(id, progress);
+      return progress;
+    }
+  }
+
+  // Exam analytics operations
+  async getExamAnalytics(attemptId: string): Promise<ExamAnalytics[]> {
+    return Array.from(this.examAnalytics.values())
+      .filter(a => a.attemptId === attemptId);
+  }
+
+  async createExamAnalytics(insertAnalytics: InsertExamAnalytics): Promise<ExamAnalytics> {
+    const id = randomUUID();
+    const analytics: ExamAnalytics = {
+      ...insertAnalytics,
+      id,
+    };
+    this.examAnalytics.set(id, analytics);
+    return analytics;
   }
 }
 
