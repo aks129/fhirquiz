@@ -868,6 +868,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Competency area endpoints
+  app.get("/api/competency-areas", async (req, res) => {
+    try {
+      const competencyAreas = await storage.getCompetencyAreas();
+      res.json(competencyAreas);
+    } catch (error) {
+      console.error("Error fetching competency areas:", error);
+      res.status(500).json({ error: "Failed to fetch competency areas" });
+    }
+  });
+
+  app.get("/api/competency-areas/:slug", async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const competencyArea = await storage.getCompetencyAreaBySlug(slug);
+      
+      if (!competencyArea) {
+        return res.status(404).json({ error: "Competency area not found" });
+      }
+      
+      res.json(competencyArea);
+    } catch (error) {
+      console.error("Error fetching competency area:", error);
+      res.status(500).json({ error: "Failed to fetch competency area" });
+    }
+  });
+
   // BYOD endpoints
   app.post("/api/byod/import", async (req, res) => {
     try {

@@ -35,6 +35,13 @@ export default function SidebarNavigation() {
       completed: true,
     },
     {
+      id: "study-mode",
+      path: "/study",
+      label: "🎯 Study Mode (Exam Prep)",
+      icon: "fas fa-graduation-cap",
+      description: "HL7 FHIR Certification Prep",
+    },
+    {
       id: "day1",
       path: "/lab/day1", 
       label: "Day 1: Ingest & Land",
@@ -135,7 +142,12 @@ export default function SidebarNavigation() {
                         {item.icon}
                       </div>
                     )}
-                    <span>{item.label}</span>
+                    <div className="flex flex-col">
+                      <span>{item.label}</span>
+                      {item.description && (
+                        <span className="text-xs text-muted-foreground">{item.description}</span>
+                      )}
+                    </div>
                   </span>
                   {item.completed ? (
                     <i className="fas fa-check-circle text-green-500"></i>

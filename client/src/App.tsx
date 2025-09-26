@@ -18,6 +18,8 @@ import { QuizDay1 } from "@/pages/quiz-day1";
 import { QuizDay2 } from "@/pages/quiz-day2";
 import { QuizDay3 } from "@/pages/quiz-day3";
 import { QuizFhir } from "@/pages/quiz-fhir";
+import StudyMode from "@/pages/study-mode";
+import CompetencyStudy from "@/pages/competency-study";
 import ByodPage from "@/pages/byod";
 import MiniAppPage from "@/pages/mini-app";
 import DemoPage from "@/pages/demo";
@@ -125,6 +127,13 @@ function Router() {
             <Route path="/quiz/day2" component={QuizDay2} />
             <Route path="/quiz/day3" component={QuizDay3} />
             <Route path="/quiz/fhir" component={QuizFhir} />
+            <Route path="/quiz/resource-model" component={() => <QuizFhir slug="resource-model" />} />
+            <Route path="/quiz/api-behavior" component={() => <QuizFhir slug="api-behavior" />} />
+            <Route path="/quiz/implementation" component={() => <QuizFhir slug="implementation" />} />
+            <Route path="/quiz/troubleshooting" component={() => <QuizFhir slug="troubleshooting" />} />
+            <Route path="/quiz/implementation-guides" component={() => <QuizFhir slug="implementation-guides" />} />
+            <Route path="/study" component={StudyMode} />
+            <Route path="/study/:slug" component={CompetencyStudy} />
             <Route path="/mini-app/:id" component={MiniAppPage} />
             <Route path="/demo" component={DemoPage} />
             <Route path="/resources" component={Resources} />
