@@ -41,11 +41,25 @@ export default function Day2Lab() {
       return response.json();
     },
     onSuccess: (result) => {
+      // Show appropriate success message based on transform type
+      let description = `Processed ${result.recordsProcessed} records`;
+      
+      if (result.transformType === 'staging') {
+        description = `🎉 Created ${result.tablesCreated?.length || 3} staging tables with ${result.recordsProcessed} records processed`;
+      } else if (result.transformType === 'riskScore') {
+        description = `📊 Calculated risk scores for ${result.recordsProcessed} patients`;
+      } else if (result.transformType === 'readmission') {
+        description = `🏥 Analyzed readmission patterns for ${result.recordsProcessed} patient encounters`;
+      }
+      
       toast({
-        title: "Transform Complete",
-        description: `Processed ${result.recordsProcessed} records`,
+        title: result.message || "Transform Complete",
+        description,
       });
+      
+      // Invalidate queries to update UI
       queryClient.invalidateQueries({ queryKey: ["/api/artifacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/lab/progress"] });
     },
     onError: (error) => {
       toast({

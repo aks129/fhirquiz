@@ -711,20 +711,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Transform operations (Day 2)
   app.post("/api/transforms/run", async (req, res) => {
     try {
-      const { transformType, inputData } = req.body;
+      const { transformType, sqlQuery, inputData } = req.body;
       const sessionId = req.headers['x-session-id'] as string;
       
-      // Simulate transform execution
-      const results = {
+      // Generate more realistic results based on transform type
+      let results: any = {
         success: true,
+        transformType,
         recordsProcessed: inputData?.length || 0,
-        outputPath: `/tmp/transform_${Date.now()}.json`,
-        riskScores: inputData?.map((record: any, index: number) => ({
-          patientId: record.patientId || `patient-${index}`,
-          riskScore: Math.random() * 100,
-          readmissionFlag: Math.random() > 0.7,
-        })) || [],
+        outputPath: `/tmp/transform_${transformType}_${Date.now()}.json`,
+        executedAt: new Date().toISOString(),
       };
+
+      // Handle different transform types
+      switch (transformType) {
+        case 'staging':
+          results = {
+            ...results,
+            message: "Staging tables created successfully",
+            tablesCreated: ['staging_patients', 'staging_encounters', 'staging_observations'],
+            recordsProcessed: Math.max(inputData?.length || 0, 10), // Simulate some records
+            executionDetails: {
+              sql: sqlQuery,
+              duration: '1.2s',
+              status: 'completed'
+            }
+          };
+          
+          // Mark staging_tables step as completed
+          await storage.updateLabProgress({
+            sessionId,
+            labDay: 2,
+            stepName: 'staging_tables',
+            completed: true,
+          });
+          break;
+          
+        case 'riskScore':
+          results = {
+            ...results,
+            message: "Risk scores calculated successfully",
+            recordsProcessed: Math.max(inputData?.length || 0, 5),
+            riskScores: Array.from({length: Math.max(inputData?.length || 0, 5)}, (_, index) => ({
+              patientId: `patient-${String(index + 1).padStart(3, '0')}`,
+              riskScore: Math.floor(Math.random() * 100),
+              riskCategory: ['LOW', 'MEDIUM', 'HIGH'][Math.floor(Math.random() * 3)],
+              diabetesScore: Math.floor(Math.random() * 15),
+              hypertensionScore: Math.floor(Math.random() * 10),
+              smokingScore: Math.floor(Math.random() * 20),
+            })),
+            executionDetails: {
+              sql: sqlQuery,
+              duration: '2.1s',
+              status: 'completed'
+            }
+          };
+          
+          // Mark risk_calculation step as completed
+          await storage.updateLabProgress({
+            sessionId,
+            labDay: 2,
+            stepName: 'risk_calculation',
+            completed: true,
+          });
+          break;
+          
+        case 'readmission':
+          results = {
+            ...results,
+            message: "Readmission analysis completed",
+            recordsProcessed: Math.max(inputData?.length || 0, 3),
+            readmissionAnalysis: Array.from({length: Math.max(inputData?.length || 0, 3)}, (_, index) => ({
+              patientId: `patient-${String(index + 1).padStart(3, '0')}`,
+              firstEncounter: `encounter-${String(index * 2 + 1).padStart(3, '0')}`,
+              secondEncounter: `encounter-${String(index * 2 + 2).padStart(3, '0')}`,
+              daysBetween: Math.floor(Math.random() * 60),
+              readmission30d: Math.random() > 0.7 ? 1 : 0,
+            })),
+            executionDetails: {
+              sql: sqlQuery,
+              duration: '1.8s',
+              status: 'completed'
+            }
+          };
+          
+          // Mark readmission_flag step as completed
+          await storage.updateLabProgress({
+            sessionId,
+            labDay: 2,
+            stepName: 'readmission_flag',
+            completed: true,
+          });
+          break;
+          
+        default:
+          results.message = "Transform executed successfully";
+      }
 
       // Store as artifact
       await storage.createArtifact({
@@ -738,6 +820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(results);
     } catch (error) {
+      console.error('Transform execution error:', error);
       res.status(500).json({ error: "Transform execution failed" });
     }
   });
