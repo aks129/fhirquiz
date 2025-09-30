@@ -1,71 +1,31 @@
 {
   "activities": [
     {
-      "logId": 12345,
       "activityName": "Walk",
-      "activityTypeId": 90013,
-      "averageHeartRate": 95,
-      "duration": 1800000,
-      "activeDuration": 1800000,
-      "steps": 3000,
-      "startTime": "08:00",
-      "startDate": "2024-01-15",
       "calories": 120,
-      "distance": 2.4,
-      "distanceUnit": "Kilometer"
+      "distance": 2.5,
+      "duration": 30,
+      "startTime": "2024-01-15T08:00:00.000Z"
     },
     {
-      "logId": 12346,
       "activityName": "Run",
-      "activityTypeId": 90009,
-      "averageHeartRate": 150,
-      "duration": 2700000,
-      "activeDuration": 2700000,
-      "steps": 6500,
-      "startTime": "12:00",
-      "startDate": "2024-01-15",
-      "calories": 350,
-      "distance": 5.0,
-      "distanceUnit": "Kilometer"
-    }
-  ],
-  "body": [
-    {
-      "logId": 1000001,
-      "weight": 75.5,
-      "bmi": 23.2,
-      "date": "2024-01-15"
+      "calories": 180,
+      "distance": 1.8,
+      "duration": 15,
+      "startTime": "2024-01-15T09:00:00.000Z"
     }
   ],
   "heartRate": [
-    {
-      "dateTime": "2024-01-15",
-      "value": {
-        "restingHeartRate": 65,
-        "customHeartRateZones": [],
-        "heartRateZones": [
-          {
-            "caloriesOut": 120,
-            "max": 95,
-            "min": 85,
-            "minutes": 30,
-            "name": "Fat Burn"
-          }
-        ]
-      }
-    }
+    {"dateTime": "2024-01-15T08:00:00.000Z", "value": 72},
+    {"dateTime": "2024-01-15T09:00:00.000Z", "value": 85},
+    {"dateTime": "2024-01-15T10:00:00.000Z", "value": 68}
   ],
   "sleep": [
     {
-      "logId": 2000001,
       "dateOfSleep": "2024-01-15",
-      "startTime": "2024-01-14T23:30:00.000",
-      "endTime": "2024-01-15T07:00:00.000",
-      "duration": 27000000,
-      "minutesToFallAsleep": 10,
-      "minutesAsleep": 440,
-      "minutesAwake": 10,
-      "efficiency": 98
+      "duration": 420,
+      "minutesAsleep": 398,
+      "minutesAwake": 22
     }
   ]
 }

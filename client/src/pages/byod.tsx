@@ -25,6 +25,12 @@ export default function ByodPage() {
     refetchInterval: 5000,
   });
 
+  // Query generated apps
+  const { data: generatedApps, refetch: refetchApps } = useQuery({
+    queryKey: ["/api/byod/apps"],
+    enabled: currentStep === "share",
+  });
+
   // Determine if using local FHIR
   const useLocalFhir = fhirBaseUrl?.includes("localhost") || fhirBaseUrl?.includes("127.0.0.1");
 
@@ -102,6 +108,14 @@ export default function ByodPage() {
         </CardContent>
       </Card>
 
+      <Alert className="bg-green-50 border-green-200">
+        <Activity className="h-4 w-4 text-green-600" />
+        <AlertDescription className="text-green-900">
+          <strong className="font-semibold">Learn FHIR by Doing:</strong> This tool converts your personal health data into
+          FHIR Observation resources using standardized LOINC codes - the same process used in real healthcare systems!
+        </AlertDescription>
+      </Alert>
+
       <div className="text-center">
         <Button 
           size="lg" 
@@ -115,6 +129,32 @@ export default function ByodPage() {
       </div>
     </div>
   );
+
+  const createAppMutation = useMutation({
+    mutationFn: async (data: { appType: string; appName: string }) => {
+      const metrics = Object.keys(importData?.preview || {});
+      const response = await fetch("/api/byod/generate-app", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          byodSessionId: importData?.sessionId,
+          appName: data.appName,
+          appType: data.appType,
+          metrics,
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to generate app");
+      return response.json();
+    },
+    onSuccess: (result) => {
+      refetchApps();
+      setCurrentStep("share");
+    },
+  });
+
+  const handleCreateApp = (appType: string, appName: string) => {
+    createAppMutation.mutate({ appType, appName });
+  };
 
   const renderAppGeneration = () => (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -167,7 +207,13 @@ export default function ByodPage() {
               <li>• Interactive time controls</li>
               <li>• Export and sharing options</li>
             </ul>
-            <Button className="w-full">Create Dashboard</Button>
+            <Button
+              className="w-full"
+              onClick={() => handleCreateApp("dashboard", "My Health Dashboard")}
+              disabled={createAppMutation.isPending}
+            >
+              {createAppMutation.isPending ? "Creating..." : "Create Dashboard"}
+            </Button>
           </CardContent>
         </Card>
 
@@ -185,7 +231,14 @@ export default function ByodPage() {
               <li>• Pattern recognition</li>
               <li>• Predictive modeling</li>
             </ul>
-            <Button className="w-full" variant="outline">Create Analyzer</Button>
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => handleCreateApp("trends", "Trend Analyzer")}
+              disabled={createAppMutation.isPending}
+            >
+              {createAppMutation.isPending ? "Creating..." : "Create Analyzer"}
+            </Button>
           </CardContent>
         </Card>
 
@@ -203,7 +256,14 @@ export default function ByodPage() {
               <li>• Anomaly detection</li>
               <li>• Goal optimization</li>
             </ul>
-            <Button className="w-full" variant="outline">Generate Insights</Button>
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => handleCreateApp("insights", "Insight Generator")}
+              disabled={createAppMutation.isPending}
+            >
+              {createAppMutation.isPending ? "Creating..." : "Generate Insights"}
+            </Button>
           </CardContent>
         </Card>
 
@@ -221,20 +281,27 @@ export default function ByodPage() {
               <li>• Custom visualizations</li>
               <li>• Personalized features</li>
             </ul>
-            <Button className="w-full" variant="outline">Customize App</Button>
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => handleCreateApp("custom", "Custom Health App")}
+              disabled={createAppMutation.isPending}
+            >
+              {createAppMutation.isPending ? "Creating..." : "Customize App"}
+            </Button>
           </CardContent>
         </Card>
       </div>
 
       <div className="flex gap-3">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={() => setCurrentStep("import")}
           data-testid="button-back-to-import"
         >
           Back to Import
         </Button>
-        <Button 
+        <Button
           onClick={() => setCurrentStep("share")}
           className="flex-1"
           data-testid="button-continue-to-share"
@@ -404,11 +471,38 @@ export default function ByodPage() {
               
               <div className="space-y-3">
                 <h4 className="font-medium">Generated Apps</h4>
-                <div className="text-center py-8 text-muted-foreground">
-                  <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No apps generated yet</p>
-                  <p className="text-sm">Create an app first to see sharing options</p>
-                </div>
+                {!generatedApps || generatedApps.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>No apps generated yet</p>
+                    <p className="text-sm">Create an app first to see sharing options</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {generatedApps.map((app: any) => (
+                      <Card key={app.id} className="p-4">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h5 className="font-medium">{app.appName}</h5>
+                            <p className="text-sm text-muted-foreground capitalize">{app.appType} • Created {new Date(app.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" asChild>
+                              <a href={`/byod-app/${app.id}`} target="_blank" rel="noopener noreferrer">
+                                View App
+                              </a>
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/byod-app/${app.id}`);
+                            }}>
+                              Copy Link
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

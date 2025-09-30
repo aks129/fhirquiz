@@ -24,6 +24,7 @@ import PracticeExam from "@/pages/practice-exam";
 import ProgressTracking from "@/pages/progress-tracking";
 import QuickReference from "@/pages/quick-reference";
 import ByodPage from "@/pages/byod";
+import ByodAppPage from "@/pages/byod-app";
 import MiniAppPage from "@/pages/mini-app";
 import DemoPage from "@/pages/demo";
 import FhirSimulator from "@/pages/FhirSimulator";
@@ -143,6 +144,7 @@ function Router() {
             <Route path="/practice-exam" component={PracticeExam} />
             <Route path="/progress" component={ProgressTracking} />
             <Route path="/quick-reference" component={QuickReference} />
+            <Route path="/byod-app/:id" component={ByodAppPage} />
             <Route path="/mini-app/:id" component={MiniAppPage} />
             <Route path="/demo" component={DemoPage} />
             <Route path="/resources" component={Resources} />

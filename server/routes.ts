@@ -1532,6 +1532,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/byod/app/:appId", async (req, res) => {
+    try {
+      const { appId } = req.params;
+      const app = await storage.getGeneratedApp(appId);
+
+      if (!app) {
+        return res.status(404).json({ error: "App not found" });
+      }
+
+      res.json(app);
+    } catch (error) {
+      console.error("Error fetching app:", error);
+      res.status(500).json({ error: "Failed to fetch app" });
+    }
+  });
+
   // Demo endpoint to initialize sample data
   app.post("/api/demo/initialize", async (req, res) => {
     try {

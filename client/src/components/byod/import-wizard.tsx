@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, FileText, Activity, Smartphone, CheckCircle, AlertCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Upload, FileText, Activity, Smartphone, CheckCircle, AlertCircle, Info } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -359,7 +360,21 @@ export function ImportWizard({ onComplete }: ImportWizardProps) {
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <h4 className="font-medium">{metric}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{metric}</h4>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button className="inline-flex">
+                                <Info className="w-4 h-4 text-blue-500" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="font-semibold mb-1">📊 FHIR Observation</p>
+                              <p className="text-xs mb-2">This metric will become a FHIR Observation resource - the standard way to represent measurements in healthcare.</p>
+                              <p className="text-xs text-blue-200">💡 Uses LOINC codes for worldwide interoperability</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {data.count} records • {data.unit && `Unit: ${data.unit}`}
                         </p>

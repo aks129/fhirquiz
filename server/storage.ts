@@ -82,6 +82,7 @@ export interface IStorage {
   
   // Generated App operations
   getGeneratedApps(sessionId: string): Promise<GeneratedApp[]>;
+  getGeneratedApp(appId: string): Promise<GeneratedApp | undefined>;
   createGeneratedApp(app: InsertGeneratedApp): Promise<GeneratedApp>;
   updateGeneratedApp(id: string, updates: Partial<GeneratedApp>): Promise<GeneratedApp>;
   
@@ -626,6 +627,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.generatedApps.values()).filter(
       app => app.sessionId === sessionId
     );
+  }
+
+  async getGeneratedApp(appId: string): Promise<GeneratedApp | undefined> {
+    return this.generatedApps.get(appId);
   }
 
   async createGeneratedApp(insertApp: InsertGeneratedApp): Promise<GeneratedApp> {
