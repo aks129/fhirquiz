@@ -133,12 +133,12 @@ function Router() {
             <Route path="/quiz/day1" component={QuizDay1} />
             <Route path="/quiz/day2" component={QuizDay2} />
             <Route path="/quiz/day3" component={QuizDay3} />
-            <Route path="/quiz/fhir" component={QuizFhir} />
-            <Route path="/quiz/resource-model" component={() => <QuizFhir slug="resource-model" />} />
-            <Route path="/quiz/api-behavior" component={() => <QuizFhir slug="api-behavior" />} />
-            <Route path="/quiz/implementation" component={() => <QuizFhir slug="implementation" />} />
-            <Route path="/quiz/troubleshooting" component={() => <QuizFhir slug="troubleshooting" />} />
-            <Route path="/quiz/implementation-guides" component={() => <QuizFhir slug="implementation-guides" />} />
+            <Route path="/quiz/fhir">{() => <QuizFhir />}</Route>
+            <Route path="/quiz/resource-model">{() => <QuizFhir slug="resource-model" />}</Route>
+            <Route path="/quiz/api-behavior">{() => <QuizFhir slug="api-behavior" />}</Route>
+            <Route path="/quiz/implementation">{() => <QuizFhir slug="implementation" />}</Route>
+            <Route path="/quiz/troubleshooting">{() => <QuizFhir slug="troubleshooting" />}</Route>
+            <Route path="/quiz/implementation-guides">{() => <QuizFhir slug="implementation-guides" />}</Route>
             <Route path="/study" component={StudyMode} />
             <Route path="/study/:slug" component={CompetencyStudy} />
             <Route path="/practice-exam" component={PracticeExam} />

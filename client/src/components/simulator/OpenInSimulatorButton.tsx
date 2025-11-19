@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Flask } from "lucide-react";
+import { FlaskConical } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface OpenInSimulatorButtonProps {
@@ -44,7 +44,7 @@ export default function OpenInSimulatorButton({
       className={`flex items-center gap-2 ${className}`}
       data-testid="open-in-simulator"
     >
-      <Flask className="h-4 w-4" />
+      <FlaskConical className="h-4 w-4" />
       Open in Simulator
     </Button>
   );
