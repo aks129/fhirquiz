@@ -115,22 +115,22 @@ export function CtaButton({
 }
 
 // Specific CTA components for common use cases
-export function StartTrialCta({ className = "", size = "default" }: { className?: string; size?: "sm" | "default" | "lg" }) {
-  return <CtaButton variant="trial" className={className} size={size} />;
+export function StartTrialCta({ className = "", size = "default", children }: { className?: string; size?: "sm" | "default" | "lg"; children?: React.ReactNode }) {
+  return <CtaButton variant="trial" className={className} size={size}>{children}</CtaButton>;
 }
 
-export function CreateAccountCta({ className = "", size = "default" }: { className?: string; size?: "sm" | "default" | "lg" }) {
-  return <CtaButton variant="account" className={className} size={size} />;
+export function CreateAccountCta({ className = "", size = "default", children }: { className?: string; size?: "sm" | "default" | "lg"; children?: React.ReactNode }) {
+  return <CtaButton variant="account" className={className} size={size}>{children}</CtaButton>;
 }
 
-export function DemoModeCta({ className = "", size = "default" }: { className?: string; size?: "sm" | "default" | "lg" }) {
-  return <CtaButton variant="demo" className={className} size={size} />;
+export function DemoModeCta({ className = "", size = "default", children }: { className?: string; size?: "sm" | "default" | "lg"; children?: React.ReactNode }) {
+  return <CtaButton variant="demo" className={className} size={size}>{children}</CtaButton>;
 }
 
-export function UpgradeCta({ className = "", size = "default" }: { className?: string; size?: "sm" | "default" | "lg" }) {
-  return <CtaButton variant="upgrade" className={className} size={size} />;
+export function UpgradeCta({ className = "", size = "default", children }: { className?: string; size?: "sm" | "default" | "lg"; children?: React.ReactNode }) {
+  return <CtaButton variant="upgrade" className={className} size={size}>{children}</CtaButton>;
 }
 
-export function EnrollCta({ className = "", size = "default" }: { className?: string; size?: "sm" | "default" | "lg" }) {
-  return <CtaButton variant="enroll" className={className} size={size} />;
+export function EnrollCta({ className = "", size = "default", children }: { className?: string; size?: "sm" | "default" | "lg"; children?: React.ReactNode }) {
+  return <CtaButton variant="enroll" className={className} size={size}>{children}</CtaButton>;
 }
