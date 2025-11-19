@@ -5,29 +5,22 @@
   "installCommand": "npm install",
   "framework": null,
   "outputDirectory": "dist",
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "source": "/sim/:path*",
+      "destination": "/api/:path*"
     },
     {
-      "src": "/sim/(.*)",
-      "dest": "/api/$1"
+      "source": "/ops/:path*",
+      "destination": "/api/:path*"
     },
     {
-      "src": "/ops/(.*)",
-      "dest": "/api/$1"
+      "source": "/config/:path*",
+      "destination": "/api/:path*"
     },
     {
-      "src": "/config/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/((?!api|_next|static|favicon.ico).*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
@@ -51,12 +44,6 @@
           "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, X-Session-Id"
         }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
     }
   ],
   "functions": {
